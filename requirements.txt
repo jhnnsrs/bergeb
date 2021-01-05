@@ -1,0 +1,6 @@
+requests
+requests-oauthlib
+websockets
+pydantic
+pylint
+aiostream
