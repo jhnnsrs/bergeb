@@ -40,6 +40,9 @@ knowledge of their underlying api.
 
 Each Datapoint provides a typesafe schema. Arnheim Elements provides you with an implemtation of that schema.
 
+## Provide a Template for a Node
+
+Documentation neccesary
 
 
 ### Testing and Documentation
