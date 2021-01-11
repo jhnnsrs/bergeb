@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from bergen.managers.base import BaseManager
 from bergen.query import TypedGQL
 from typing import Callable, Dict, Generic, List, TypeVar, Any
 
@@ -9,7 +10,7 @@ ModelType = TypeVar("ModelType")
 class ModelConfigurationError(Exception):
     pass
 
-class ModelManager(Generic[ModelType]):
+class ModelManager(BaseManager, Generic[ModelType]):
 
     def __call__(self, model: ModelType, meta) -> Any:
         self.model = model
@@ -26,7 +27,6 @@ class ModelManager(Generic[ModelType]):
 
         return get_current_arnheim().getWardForIdentifier(identifier=identifier)
 
-
     def _call_meta(self, attribute, ward=None, **kwargs):
         method =  getattr(self.meta, attribute, None)
         assert method is not None, f"Please provide the {attribute} parameter in your ArnheimModel meta class for SchemaClass {self.model.__name__} "
@@ -42,6 +42,9 @@ class ModelManager(Generic[ModelType]):
 
     def filter(self, ward=None, **kwargs) -> List[ModelType]:
         return self._call_meta("filter", ward=ward, **kwargs)
+
+    def update(self, ward=None, **kwargs) -> ModelType:
+        return self._call_meta("update", ward=ward, **kwargs)
 
     def all(self, ward=None) -> List[ModelType]:
         return self._call_meta("filter", ward=ward)

@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from bergen.managers.base import BaseManager
 from bergen.types.manager import ModelManager
 from typing import Callable, Dict, Generic, List, TypeVar, Type
 from pydantic.fields import Field
@@ -17,7 +18,7 @@ class ArnheimModelConfigurationError(ArnheimModelException):
 
 ModelType = TypeVar("ModelType", bound="ArnheimModel", covariant=True)
 
-class ArnheimModelManager(ABC, Generic[ModelType]):
+class ArnheimModelManager(BaseManager, Generic[ModelType]):
 
     def __init__(self, model: ModelType, meta) -> None:
         self.model = model
@@ -50,6 +51,9 @@ class ArnheimModelManager(ABC, Generic[ModelType]):
 
     def filter(self, ward=None, **kwargs) -> List[ModelType]:
         return self._call_meta("filter", ward=ward, **kwargs)
+
+    def update(self, ward=None, **kwargs) -> ModelType:
+        return self._call_meta("update", ward=ward, **kwargs)
 
     def all(self, ward=None):
         return self._call_meta("filter", ward=ward)

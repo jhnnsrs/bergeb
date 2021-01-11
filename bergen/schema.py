@@ -122,7 +122,6 @@ class Template(ArnheimModel):
         identifier = "template"
 
 
-
 class Pod(ArnheimModel):
     template: Optional[Template]
     id: int
