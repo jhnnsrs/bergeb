@@ -6,8 +6,9 @@ class TypeMatcher:
 
     def registerModelForIdentifier(self,identifier, model, overwrite=False):
         identifier = identifier.lower()
-        if not overwrite:
-            assert identifier not in self.map, "You can not register two ArnheimModels on the same identifier, please specifiy overwrite_default == True, or register == False in your ArnheimModel meta"
+        if identifier in self.map: 
+            assert overwrite is True, "Attempting to overwrite, please provide overwrite in Call"
+            print(f"Overwriting {self.map[identifier]} with {model} for {identifier}")
         self.map[identifier] = model
 
     def getModelForIdentifier(self, identifier):

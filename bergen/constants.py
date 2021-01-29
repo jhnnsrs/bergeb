@@ -1,5 +1,5 @@
 
-from bergen.schema import Assignation, Node, Provision, Transcript, VartPod, Volunteer
+from bergen.schema import Assignation, Node, Peasent, PeasentTemplate, Provision, Transcript, VartPod, Volunteer
 from bergen.query import TypedGQL
 
 
@@ -25,6 +25,10 @@ NEGOTIATION_GQL = TypedGQL("""
             type
         }
     }
+    postman {
+        type
+        kwargs
+    }
     points {
       host
       name
@@ -37,6 +41,27 @@ NEGOTIATION_GQL = TypedGQL("""
   }
   }
 """, Transcript)
+
+
+
+SERVE_GQL = TypedGQL("""
+    mutation Serve($name: String!){
+        serve(name:$name){
+            id
+            name
+            
+        }
+    }
+""", Peasent)
+
+OFFER_GQL = TypedGQL("""
+    mutation Offer($node: ID!, $params: GenericScalar!, $peasent: ID!){
+        offer(node: $node, params: $params, peasent: $peasent ){
+            id
+            name 
+        }
+    }
+""", PeasentTemplate)
 
 
 

@@ -1,3 +1,4 @@
+from bergen.registries.arnheim import get_current_arnheim
 from bergen.wards.graphql.default import GraphQlWard
 from bergen.auths.base import BaseAuthBackend
 from typing import Callable
@@ -16,7 +17,7 @@ class DataPointRegistry(object):
         self.pointNameWardMap: dict[str, BaseWard] = {}
         self.builders =  {
                 # Default Builders for standard
-                DataPointType.GRAPHQL: lambda datapoint, auth: GraphQlWard(host=datapoint.host, port=datapoint.port, token=auth.getToken(), protocol=auth.getProtocol())
+                DataPointType.GRAPHQL: lambda datapoint, auth: GraphQlWard(host=datapoint.host, port=datapoint.port, token=auth.getToken(), protocol=auth.getProtocol(), loop=get_current_arnheim().loop)
         }
 
     def registerClientBuilder(self, type:str , builder: Callable):

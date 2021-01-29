@@ -137,7 +137,7 @@ class HostMixIn:
     
 
     def run(self):
-        logger.warn("Waiting for incoming Messages")
+        logger.warning("Waiting for incoming Messages")
 
         loop = asyncio.get_event_loop()
         asyncio.run(self.host())

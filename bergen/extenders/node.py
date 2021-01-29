@@ -1,3 +1,5 @@
+from typing import Any
+from bergen.schema import AssignationParams, Template
 from bergen.wards.graphql.subscription import SubscriptionGraphQLWard
 from bergen.registries.arnheim import get_current_arnheim
 import asyncio
@@ -78,10 +80,6 @@ class AsyncPodHandler:
                 pass
 
 
-
-
-        
-
     async def kill(self):
         await asyncio.sleep(0.01)
         logger.info("Closed Connection")
@@ -89,17 +87,17 @@ class AsyncPodHandler:
 
 class ProvisionHandler:
 
-    def __init__(self, nodeModel, ward: SubscriptionGraphQLWard, provider="vart") -> None:
+    def __init__(self, nodeModel, ward: SubscriptionGraphQLWard, template: Template = None) -> None:
         super().__init__()
         self._pod = None
         self._ward = ward
-        self._provider = provider
+        self._template = template
         self._node = nodeModel
 
     async def __aenter__(self):
-        from arnheim.constants import PROVIDE_GQL
+        from bergen.constants import PROVIDE_GQL
 
-        async for item in PROVIDE_GQL.subscribe(self._ward, variables={"node": self._node.id, "selector": {"provider": self._provider, "kwargs": {"volunteer": 2}}, "reference": str(uuid.uuid4())}):
+        async for item in PROVIDE_GQL.subscribe(self._ward, variables={"node": self._node.id, "selector": {"template": self.template.id, "kwargs": {"volunteer": 2}}, "reference": str(uuid.uuid4())}):
             if item.pod.status == "ACTIVE":
                 self._provisionreference = item.reference 
                 self._pod = AsyncPodHandler(self, self._ward, self._node, item.pod)
@@ -121,43 +119,54 @@ class ProvisionHandler:
         self._pod = None
 
 
+
+
+
 class NodeExtender(BaseExtender):
+
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args,**kwargs)
-        self._pod = "Hallo"
-
-    def __call__as_stream(self, inputs, provider):
-        logger.info(f"Called as Stream")
-        return stream.count(interval=0.2)
-
-    async def __call_async(self, inputs, provider):
         
-        async with self.provide(provider=provider) as handler:
-            return await handler.assign(inputs=inputs)
+        self._postman = get_current_arnheim().getPostman()
 
-    async def __await_call_async(self, inputs,provider):
-        return await self.__call_async(inputs, provider)
+    async def __call_async(self, inputs: dict, params: AssignationParams, **kwargs):
+        
+        return await self._postman.assign(self, inputs, params, **kwargs)
 
-    def __call_sync(self, inputs, provider):
-        logger.info(f"Called in Sync")
-        loop = asyncio.get_event_loop()
-        result = loop.run_until_complete(self.__await_call_async(inputs, provider))
-        loop.close()
-        return result
+    async def __delay_async(self, inputs: dict, params: AssignationParams, **kwargs):
+    
+        return await self._postman.delay(self, inputs, params, **kwargs)
 
-    def __call__(self, inputs: dict, provider="vart", stream=False):
-        """Call this method to notify all subscriptions in the group.
-        This method can be called from both synchronous and asynchronous
-        contexts. If you call it from the asynchronous context then you
-        have to `await`.
+    async def stream(self, inputs: dict, template: Template):
+
+        return stream.count(interval=0.2)
+    
+    def delay(self, inputs: dict, params: AssignationParams = None, **kwargs):
+        try:
+            event_loop = asyncio.get_event_loop()
+        except RuntimeError:
+            pass
+        else:
+            if event_loop.is_running():
+                return self.__delay_async(inputs, params, **kwargs)
+            else:
+                logger.info("Spinning up new eventloop just for that <3")
+                event_loop = asyncio.get_event_loop()
+                result = event_loop.run_until_complete(self.__delay_async(inputs, params, **kwargs))
+                return result
+
+
+
+    def __call__(self, inputs: dict, params: AssignationParams = None, **kwargs) -> dict:
+        """Call this node (can be run both asynchronously and syncrhounsly)
+
         Args:
-            group: Name of the subscription group which members must be
-                notified. `None` means that all the subscriptions of
-                type will be triggered.
-            payload: The payload delivered to the `publish` handler.
-                NOTE: The `payload` is serialized before sending
-                to the subscription group.
+            inputs (dict): The inputs for this Node
+            params (AssignationParams, optional): [description]. Defaults to None.
+
+        Returns:
+            outputs (dict): The ooutputs of this Node
         """
         try:
             event_loop = asyncio.get_event_loop()
@@ -165,14 +174,15 @@ class NodeExtender(BaseExtender):
             pass
         else:
             if event_loop.is_running():
-                if stream: return self.__call__as_stream(inputs, provider)
-                return self.__call_async(inputs, provider)
-        
-
-            
-        return self.__call_sync(inputs, provider)
+                return self.__call_async(inputs, params, **kwargs)
+            else:
+                logger.info("Spinning up new eventloop just for that <3")
+                event_loop = asyncio.get_event_loop()
+                result = event_loop.run_until_complete(self.__call_async(inputs, params, **kwargs))
+                return result
 
     def provide(self, provider = "vart"):
+
         ward = get_current_arnheim().getWard()
         self._provisionhandler = ProvisionHandler(self, ward, provider=provider)
         return self._provisionhandler

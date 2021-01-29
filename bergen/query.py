@@ -48,7 +48,7 @@ class GQL(object):
         return self.m.group("type")
 
     def extract(self, result: dict):
-        return result["data"][self.firstchild]
+        return result[self.firstchild]
 
 
 
@@ -84,13 +84,24 @@ class TypedGQL(GQL, Generic[MyType]):
         return self._cls
 
 
-    def run(self, ward=None, **kwargs) -> MyType:
+    def run(self, ward=None, variables=None, **kwargs) -> MyType:
         from bergen.registries.arnheim import get_current_arnheim
         ward = ward or get_current_arnheim().getWard()
-        returnedobject = ward.run(self, **kwargs)
+        returnedobject = ward.run(self, variables=variables, **kwargs)
         assert returnedobject is not None, "We received nothing back from the Server! Refine your Query!"
         if isinstance(returnedobject,list): return [self.cls(**item) for item in returnedobject]
         return self.cls(**returnedobject)
+
+    
+    async def run_async(self, ward=None, variables=None, **kwargs) -> MyType:
+        from bergen.registries.arnheim import get_current_arnheim
+        ward = ward or get_current_arnheim().getWard()
+        returnedobject = await ward.run_async(self, variables=variables,**kwargs)
+        
+        assert returnedobject is not None, "We received nothing back from the Server! Refine your Query!"
+        if isinstance(returnedobject,list): return [self.cls(**item) for item in returnedobject]
+        return self.cls(**returnedobject)
+
 
 
     def subscribe(self, ward=None, **kwargs) -> Generator[MyType, None,None]:

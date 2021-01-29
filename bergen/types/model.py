@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from bergen.managers.base import BaseManager
 from bergen.types.manager import ModelManager
-from typing import Callable, Dict, Generic, List, TypeVar, Type
+from typing import Callable, Dict, Generic, List, Optional, TypeVar, Type
 from pydantic.fields import Field
 from pydantic.main import BaseModel, ModelMetaclass
 from bergen.query import DelayedGQL, GQL, TypedGQL
@@ -20,7 +20,7 @@ ModelType = TypeVar("ModelType", bound="ArnheimModel", covariant=True)
 
 class ArnheimModelManager(BaseManager, Generic[ModelType]):
 
-    def __init__(self, model: ModelType, meta) -> None:
+    def __init__(self, model: ModelType = None, meta = None) -> None:
         self.model = model
         self.meta = meta
         super().__init__()
@@ -35,15 +35,24 @@ class ArnheimModelManager(BaseManager, Generic[ModelType]):
 
         return get_current_arnheim().getWardForIdentifier(identifier=identifier)
 
-
     def _call_meta(self, attribute, ward=None, **kwargs):
+        from bergen.types.utils import parse_kwargs
         method =  getattr(self.meta, attribute, None)
         assert method is not None, f"Please provide the {attribute} parameter in your ArnheimModel meta class "
         typed_gql: TypedGQL = method(self.model)    
-        return typed_gql.run(ward=ward, variables=kwargs)
+        return typed_gql.run(ward=ward, variables=parse_kwargs(kwargs))
 
 
     def get(self, ward=None, **kwargs) -> ModelType:
+        """Gets an instance of this Model from the Dataprovider registered with Arnheim,
+
+        Args:
+            ward ([type], optional): A custom ward to be used. If you want to fetch with a different Dataprovider than the one Bergen provides you. Defaults to None.
+
+        Returns:
+            ModelType: The returned Instance
+        """
+    
         return self._call_meta("get", ward=ward, **kwargs)
         
     def create(self, ward=None, **kwargs) -> ModelType:
@@ -58,6 +67,56 @@ class ArnheimModelManager(BaseManager, Generic[ModelType]):
     def all(self, ward=None):
         return self._call_meta("filter", ward=ward)
 
+    def __call__(self, model=None, meta=None):
+        self.model = model
+        self.meta = meta
+        return self
+
+
+class ArnheimAsyncModelManager(BaseManager, Generic[ModelType]):
+
+    def __init__(self, model: ModelType = None, meta = None) -> None:
+        self.model = model
+        self.meta = meta
+        super().__init__()
+
+    def get_ward(self):
+        try:
+            identifier = self.model.Meta.identifier
+        except Exception as e:
+            raise ArnheimModelConfigurationError(f"Make soure your Model {self.model.__name__}overwrites Meta identifier: {e}")
+        from bergen.registries.arnheim import get_current_arnheim
+
+
+        return get_current_arnheim().getWardForIdentifier(identifier=identifier)
+
+    async def _call_meta(self, attribute, ward=None, **kwargs):
+        from bergen.types.utils import parse_kwargs
+        method =  getattr(self.meta, attribute, None)
+        assert method is not None, f"Please provide the {attribute} parameter in your ArnheimModel meta class "
+        typed_gql: TypedGQL = method(self.model)    
+        return await typed_gql.run_async(ward=ward, variables=parse_kwargs(kwargs))
+
+
+    async def get(self, ward=None, **kwargs) -> ModelType:
+        return await self._call_meta("get", ward=ward, **kwargs)
+        
+    async def create(self, ward=None, **kwargs) -> ModelType:
+        return await self._call_meta("create", ward=ward, **kwargs)
+
+    async def filter(self, ward=None, **kwargs) -> List[ModelType]:
+        return await self._call_meta("filter", ward=ward, **kwargs)
+
+    async def update(self, ward=None, **kwargs) -> ModelType:
+        return await self._call_meta("update", ward=ward, **kwargs)
+
+    async def all(self, ward=None):
+        return await self._call_meta("filter", ward=ward)
+
+    def __call__(self, model=None, meta=None):
+        self.model = model
+        self.meta = meta
+        return self
 
 
 class ArnheimModelMeta(ModelMetaclass):
@@ -74,12 +133,17 @@ class ArnheimModelMeta(ModelMetaclass):
         attrs['__slots__'] = tuple(slots)
 
         mcls.overriden_manager = attrs.pop("objects") if "objects" in attrs else None
+        mcls.overriden_async_manager = attrs.pop("asyncs") if "asyncs" in attrs else None
         return super(ArnheimModelMeta, mcls).__new__(mcls, name, bases, attrs)
 
 
     @property
     def objects(cls: Type[ModelType]) -> ArnheimModelManager[ModelType]:
         return cls.__objects
+
+    @property
+    def asyncs(cls: Type[ModelType]) -> ArnheimAsyncModelManager[ModelType]:
+        return cls.__asyncs
 
 
     def __init__(self, name, bases, attrs):
@@ -91,9 +155,15 @@ class ArnheimModelMeta(ModelMetaclass):
             
             managerClass = self.overriden_manager
             if managerClass:
-                self.__objects = managerClass(self, meta)
+                self.__objects = managerClass(model=self,meta=meta)
             else:
-                self.__objects = ArnheimModelManager[ModelType](self, meta)
+                self.__objects = ArnheimModelManager[ModelType](model=self,meta=meta)
+
+            asyncmanagerClass = self.overriden_async_manager 
+            if asyncmanagerClass:
+                self.__asyncs = asyncmanagerClass(model=self,meta=meta)
+            else:
+                self.__asyncs = ArnheimAsyncModelManager[ModelType](model=self,meta=meta)
 
 
             
@@ -102,7 +172,7 @@ class ArnheimModelMeta(ModelMetaclass):
             if register:
                 from bergen.registries.matcher import get_current_matcher
                 identifier = getattr(meta, "identifier", None)
-                assert identifier is not None, "Please provide identifier in your Meta class to register the Model, or specifiy register==False"
+                assert identifier is not None, f"Please provide identifier in your Meta class to register the Model {attrs['__qualname__']}, or specifiy register==False"
                 get_current_matcher().registerModelForIdentifier(identifier, self, overwrite=overwriteType)
 
 
@@ -112,7 +182,7 @@ class ArnheimModelMeta(ModelMetaclass):
 
 class ArnheimModel(BaseModel, metaclass=ArnheimModelMeta):
     TYPENAME: str = Field(None, alias='__typename')
-
+    id: Optional[int]
 
     @classmethod
     def getMeta(cls):

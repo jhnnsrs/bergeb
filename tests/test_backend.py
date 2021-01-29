@@ -1,10 +1,10 @@
 from bergen.clients.default import Bergen
-from bergen.schema import Node, DataPoint
+from bergen.models import Node, DataPoint
 
 client = Bergen(host="p-tnagerl-lab1",
         port=8000,
-        client_id="y1W8JK5OgpAexf68eqbHIx60228rTBc4moNlaKYN", 
-        client_secret="ovChuVgIFFQcNT3buPbm5AVjGCJGHBQZOQTqhvzwP02IllfJRVj17efit6aGqPcd01AJPY1SCc8kTBM22pistp8A1BRQRmtgX9Nycd2LcN1YEduhjpSY9mq5Pm2nV0xi",
+        client_id="OyTXRTXNLu6HQpegcch94eQScyrEC85tH0OkstKO", 
+        client_secret="nhSPWLVe1Ub2UOEc231KL0KmCQkIpPGubcqJr176wYfSLgLshmJChPmAi7RPs7i1KifjyOmNrPild8VGvkUWfPkvy7dBWfgUPPo6QBTHSTjZluLngrCLg6NiVEF9hbgB",
         name="karl",# if we want to specifically only use pods on this innstance we would use that it in the selector
         )
 
@@ -12,6 +12,7 @@ client = Bergen(host="p-tnagerl-lab1",
 def test_token():
 
     assert client.auth.getToken() is not None, "No token provided!"
+
 
 
 def test_node_getting():

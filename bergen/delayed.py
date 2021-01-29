@@ -2,8 +2,8 @@ from bergen.query import DelayedGQL
 
 
 NODE_QUERY = DelayedGQL("""
-query Node($id: ID!){
-  node(id: $id){
+query Node($id: ID, $package: String, $interface: String){
+  node(id: $id, package: $package, interface: $interface){
     id
     name
     image

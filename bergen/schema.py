@@ -1,26 +1,33 @@
-from bergen.types.node.inputs import Inputs, Outputs
-from bergen.types.manager import ModelManager
-from bergen.extenders.node import NodeExtender
-from bergen.extenders.user import UserPrettifier
+from bergen.queries.delayed.template import TEMPLATE_GET_QUERY
 from bergen.extenders.port import PortExtender
 from bergen.types.object import ArnheimObject
 from bergen.types.model import ArnheimModel
 from bergen.delayed import CREATE_NODE_MUTATION, NODE_FILTER_QUERY, NODE_QUERY
 from enum import Enum
-from typing import  Any, ForwardRef, Generic, List, Optional, Type, TypeVar
+from typing import  Any, Generic, List, Optional, Type, TypeVar
+try:
+	# python 3.8
+	from typing import ForwardRef
+except ImportError:
+	# ForwardRef is private in python 3.6 and 3.7
+	from typing import _ForwardRef as ForwardRef
 
-
-Node = ForwardRef("Node")
 User = ForwardRef("User")
 DataModel = ForwardRef("DataModel")
+
+
+
+class AssignationParams(ArnheimObject):
+    provider: Optional[str]
+
+
+
 
 class Avatar(ArnheimObject):
     user: Optional['User']
     avatar: Optional[str]
 
-
-
-class User(UserPrettifier, ArnheimModel):
+class User(ArnheimModel):
     id: Optional[int]
     username: Optional[str]
     firstName: Optional[str]
@@ -29,9 +36,6 @@ class User(UserPrettifier, ArnheimModel):
 
     class Meta:
         identifier = "user"
-        get = NODE_QUERY
-
-
 
 class DataPoint(ArnheimModel):
     type: Optional[str]
@@ -54,61 +58,55 @@ class DataModel(ArnheimModel):
         identifier = "datamodel"
 
 
+class PostmanArgs(ArnheimObject):
+    type: Optional[str]
+    kwargs: Optional[dict]
+
+
 class Transcript(ArnheimObject):
     array: Optional[Any]
     extensions: Optional[Any]
+    postman: Optional[PostmanArgs]
     models: Optional[List[DataModel]]
     points: Optional[List[DataPoint]]
     user: Optional[User]
 
 
-class PortType(PortExtender, ArnheimObject):
+class Port(PortExtender, ArnheimObject):
     required: Optional[bool]
     key: Optional[str]
     identifier: Optional[str] # Only for our friends the Models
 
 
-class NodeManager(ModelManager['Node']):
-
-
-    def get(self, ward=None, **kwargs) -> 'Node':
-        return NODE_QUERY(self.model).run(ward=ward, variables=kwargs)
-
-
-    def get_or_create(self, inputs: Type[Inputs] = None, outputs: Type[Outputs] = None , **kwargs) -> 'Node':
-        
-        parsed_inputs = inputs.serialized
-        parsed_outputs = outputs.serialized
-        
-        node = CREATE_NODE_MUTATION(self.model).run(variables={
-            "inputs" : parsed_inputs,
-            "outputs": parsed_outputs,
-            **kwargs
-
-        })
-        return node
-
-
-
-class Node(NodeExtender, ArnheimModel):
-    __slots__ = ("_pod","_provisionhandler")
-
-
+class Node(ArnheimModel):
     id: Optional[int]
     name: Optional[str]
     package: Optional[str]
-    inputs: Optional[List[PortType]]
-    outputs: Optional[List[PortType]]
+    inputs: Optional[List[Port]]
+    outputs: Optional[List[Port]]
 
-    objects = NodeManager()
 
     class Meta:
         identifier = "node"
-        filter = NODE_FILTER_QUERY
+
+
+
+class ArnheimApplication(ArnheimModel):
+    logo: Optional[str]
+
+    class Meta:
+        identifier = "arnheim_application"
+
+
+class Peasent(ArnheimModel):
+    name: Optional[str]
+    application: Optional[ArnheimApplication]
+
+    class Meta:
+        identifier = "peasent"
 
 
 class Volunteer(ArnheimModel):
-    id: int
     identifier: str
     node: Node
 
@@ -120,11 +118,19 @@ class Template(ArnheimModel):
 
     class Meta:
         identifier = "template"
+        get = TEMPLATE_GET_QUERY
+
+
+class PeasentTemplate(Template):
+
+    class Meta:
+        identifier = "peasenttemplate"
+
+
 
 
 class Pod(ArnheimModel):
     template: Optional[Template]
-    id: int
     status: Optional[str]
 
     class Meta:

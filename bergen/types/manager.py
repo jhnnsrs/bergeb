@@ -28,10 +28,11 @@ class ModelManager(BaseManager, Generic[ModelType]):
         return get_current_arnheim().getWardForIdentifier(identifier=identifier)
 
     def _call_meta(self, attribute, ward=None, **kwargs):
+        from bergen.types.utils import parse_kwargs
         method =  getattr(self.meta, attribute, None)
         assert method is not None, f"Please provide the {attribute} parameter in your ArnheimModel meta class for SchemaClass {self.model.__name__} "
         typed_gql: TypedGQL = method(self.model)    
-        return typed_gql.run(ward=ward, variables=kwargs)
+        return typed_gql.run(ward=ward, variables=parse_kwargs(kwargs))
 
 
     def get(self, ward=None, **kwargs) -> ModelType:

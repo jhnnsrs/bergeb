@@ -16,7 +16,7 @@ class BaseAuthBackend(ABC):
 
 
     @abstractmethod
-    def getToken(self) -> str:
+    def getToken(self, loop=None) -> str:
         raise NotImplementedError("This is an abstract Class")
 
 

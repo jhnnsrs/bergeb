@@ -3,7 +3,7 @@
 from bergen.extenders.base import BaseExtender
 
 
-class UserPrettifier(BaseExtender):
+class UserExtender(BaseExtender):
     ''' Just a little helper to make our User look nicer in Jupyter Notebooks'''
 
     def _repr_html_(self):

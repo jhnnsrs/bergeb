@@ -7,12 +7,9 @@ T = TypeVar("T")
 
 class BaseWard(Generic[T]):
 
-    def __init__(self, port=8000, host="localhost", protocol="http", token=None) -> None:
-        self.port = port
-        self.host = host
-        self.protocol = protocol
-        self.token = token
-        super().__init__()
+    def __init__(self, loop=None):
+        self.loop = loop
+        self.loop.run_until_complete(self.configure())
 
 
     def run(self, gql: TypedGQL, variables: dict = {}):
