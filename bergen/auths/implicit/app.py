@@ -5,7 +5,9 @@ from oauthlib.oauth2.rfc6749.clients.mobile_application import MobileApplication
 from requests_oauthlib.oauth2_session import OAuth2Session
 from bergen.auths.base import AuthError, BaseAuthBackend
 from bergen.enums import ClientType
+import logging
 
+logger = logging.getLogger(__name__)
 
 try:
     from bergen.auths.implicit.widgets.login import LoginDialog
@@ -13,7 +15,7 @@ try:
     Dialog = LoginDialog
 
 except Exception as e:
-    print(e)
+    logger.debug(e)
     Dialog = None
 
 

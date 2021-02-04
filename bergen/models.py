@@ -1,10 +1,8 @@
 from bergen.types.model import ArnheimModelManager
 from bergen.extenders.user import UserExtender
 from bergen.types.node.inputs import Inputs, Outputs
-from bergen.managers.model import ModelManager
 from bergen.delayed import CREATE_NODE_MUTATION, NODE_FILTER_QUERY, NODE_QUERY
 from bergen.extenders.node import NodeExtender
-from bergen.managers.node import NodeManager
 from bergen.schema import Node as SchemaNode
 from bergen.schema import User as SchemaUser
 from bergen.schema import *
@@ -34,7 +32,7 @@ class NodeManager(ArnheimModelManager[Node]):
 
 
 class Node(NodeExtender, SchemaNode):
-    __slots__ = ("_pod","_provisionhandler", "_postman")
+    __slots__ = ("_loop", "_force_sync", "_postman")
 
     objects = NodeManager()
 

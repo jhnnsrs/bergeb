@@ -7,9 +7,18 @@ import asyncio
 
 def test_node_assign():
 
-    liner = Node.objects.get(package="@canoncial/generic/filters", interface="sleep")
-    rep = liner({"rep": 1})
+    client = Bergen(host="p-tnagerl-lab1",
+        port=8000,
+        client_id="DSNwVKbSmvKuIUln36FmpWNVE2KrbS2oRX0ke8PJ", 
+        client_secret="Gp3VldiWUmHgKkIxZjL2aEjVmNwnSyIGHWbQJo6bWMDoIUlBqvUyoGWUWAe6jI3KRXDOsD13gkYVCZR0po1BLFO9QT4lktKODHDs0GyyJEzmIjkpEOItfdCC4zIa3Qzu",
+        name="karl",# if we want to specifically only use pods on this innstance we would use that it in the selector
+    )
+
+
+    sleep = Node.objects.get(package="basic", interface="sleep")
+    rep = sleep({"interval": 1})
     assert isinstance(rep, dict), "Received weird error"
+    assert isinstance(rep["interval"], int), "Return didn't adhere to sleep paradigm"
 
 
 @pytest.fixture(scope='session')
@@ -19,18 +28,12 @@ def loop():
 
 async def test_async(loop):
     
-    client = Bergen(host="p-tnagerl-lab1",
-                client_id= "EEjI4z8Gahr6TU6dujnq2Q6pAojcit3iCILF9Ggm",
-                client_secret= "Onbmcglhf18rXi0D1pvfeCwnuIGZZV8xpbktzdFXaMs5zpIFG5NJRR2R7pS7RlCgZ6bfiId317XUIrQ1EudJye2WNpZ5jjvbQWul4nyuEECNestHCIUEPCBb3B8DmdwV",
-                port=8000,
-                name="karl",
-                username = "stephane",
-                password = "bancelin12345",
-                loop=loop,
-                client_type=ClientType.EXTERNAL,
-                grant_type=GrantType.PASSWORD
-    )
-
-    sleep = await Node.asyncs.get(package="@canoncial/generic/filters", interface="sleep")
-    result = await sleep({"rep": 1})
+    async with Bergen(host="p-tnagerl-lab1",
+        port=8000,
+        client_id="DSNwVKbSmvKuIUln36FmpWNVE2KrbS2oRX0ke8PJ", 
+        client_secret="Gp3VldiWUmHgKkIxZjL2aEjVmNwnSyIGHWbQJo6bWMDoIUlBqvUyoGWUWAe6jI3KRXDOsD13gkYVCZR0po1BLFO9QT4lktKODHDs0GyyJEzmIjkpEOItfdCC4zIa3Qzu",
+        name="karl",# if we want to specifically only use pods on this innstance we would use that it in the selector
+        ):  
     
+        sleep = await Node.asyncs.get(package="basic", interface="sleep")
+        result = await sleep({"interval": 1})

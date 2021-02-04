@@ -11,7 +11,6 @@ import aiormq
 import json
 import uuid
 import logging
-from aio_pika.patterns import RPC
 import asyncio
 
 logger = logging.getLogger(__name__)
@@ -42,7 +41,7 @@ class PikaPostman(BasePostman):
     async def configure(self):
 
         self.loop = asyncio.get_event_loop()
-        self.connection = await aiormq.connect(f"amqp://{self.token}:guest@localhost/")
+        self.connection = await aiormq.connect(f"amqp://{self.token}:guest@{self.host}/")
 
         self.channel = await self.connection.channel()
         declare_ok = await self.channel.queue_declare(

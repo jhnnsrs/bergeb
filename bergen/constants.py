@@ -1,5 +1,5 @@
 
-from bergen.schema import Assignation, Node, Peasent, PeasentTemplate, Provision, Transcript, VartPod, Volunteer
+from bergen.schema import Assignation, Node, Peasent, PeasentTemplate, Pod, Provision, Transcript, VartPod, Volunteer
 from bergen.query import TypedGQL
 
 
@@ -42,7 +42,8 @@ NEGOTIATION_GQL = TypedGQL("""
   }
 """, Transcript)
 
-
+ 
+# Peasent Constants
 
 SERVE_GQL = TypedGQL("""
     mutation Serve($name: String!){
@@ -54,6 +55,9 @@ SERVE_GQL = TypedGQL("""
     }
 """, Peasent)
 
+
+
+
 OFFER_GQL = TypedGQL("""
     mutation Offer($node: ID!, $params: GenericScalar!, $peasent: ID!){
         offer(node: $node, params: $params, peasent: $peasent ){
@@ -62,6 +66,22 @@ OFFER_GQL = TypedGQL("""
         }
     }
 """, PeasentTemplate)
+
+
+ACCEPT_GQL = TypedGQL("""
+    mutation AcceptMutation($peasent: ID!, $template: ID!){
+        accept(peasent: $peasent, template: $template){
+            id
+        }
+        }
+""", Pod)
+
+
+
+
+
+
+
 
 
 

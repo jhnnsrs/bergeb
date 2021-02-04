@@ -19,6 +19,8 @@ class AssignationDataModel(MessageDataModel):
     node: Optional[int] #TODO: Maybe not optional
     pod: Optional[int]
     template: Optional[int]
+    status: Optional[str]
+    statusmessage: Optional[str]
     reference: str
     callback: Optional[str]
     progress: Optional[str]

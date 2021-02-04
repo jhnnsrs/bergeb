@@ -86,7 +86,7 @@ class TypedGQL(GQL, Generic[MyType]):
 
     def run(self, ward=None, variables=None, **kwargs) -> MyType:
         from bergen.registries.arnheim import get_current_arnheim
-        ward = ward or get_current_arnheim().getWard()
+        ward = ward or self._cls.get_ward()
         returnedobject = ward.run(self, variables=variables, **kwargs)
         assert returnedobject is not None, "We received nothing back from the Server! Refine your Query!"
         if isinstance(returnedobject,list): return [self.cls(**item) for item in returnedobject]
@@ -95,13 +95,12 @@ class TypedGQL(GQL, Generic[MyType]):
     
     async def run_async(self, ward=None, variables=None, **kwargs) -> MyType:
         from bergen.registries.arnheim import get_current_arnheim
-        ward = ward or get_current_arnheim().getWard()
+        ward = ward or self._cls.get_ward()
         returnedobject = await ward.run_async(self, variables=variables,**kwargs)
         
         assert returnedobject is not None, "We received nothing back from the Server! Refine your Query!"
         if isinstance(returnedobject,list): return [self.cls(**item) for item in returnedobject]
         return self.cls(**returnedobject)
-
 
 
     def subscribe(self, ward=None, **kwargs) -> Generator[MyType, None,None]:

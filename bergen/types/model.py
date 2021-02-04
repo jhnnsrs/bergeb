@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 from bergen.managers.base import BaseManager
-from bergen.types.manager import ModelManager
 from typing import Callable, Dict, Generic, List, Optional, TypeVar, Type
 from pydantic.fields import Field
 from pydantic.main import BaseModel, ModelMetaclass
@@ -31,7 +30,6 @@ class ArnheimModelManager(BaseManager, Generic[ModelType]):
         except Exception as e:
             raise ArnheimModelConfigurationError(f"Make soure your Model {self.model.__name__}overwrites Meta identifier: {e}")
         from bergen.registries.arnheim import get_current_arnheim
-
 
         return get_current_arnheim().getWardForIdentifier(identifier=identifier)
 
@@ -183,6 +181,15 @@ class ArnheimModelMeta(ModelMetaclass):
 class ArnheimModel(BaseModel, metaclass=ArnheimModelMeta):
     TYPENAME: str = Field(None, alias='__typename')
     id: Optional[int]
+
+    @classmethod
+    def get_ward(cls):
+        try:
+            identifier = cls.Meta.identifier
+        except Exception as e:
+            raise ArnheimModelConfigurationError(f"Make soure your Model {cls.__name__}overwrites Meta identifier: {e}")
+        from bergen.registries.arnheim import get_current_arnheim
+        return get_current_arnheim().getWardForIdentifier(identifier=identifier)
 
     @classmethod
     def getMeta(cls):

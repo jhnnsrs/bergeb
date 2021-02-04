@@ -3,8 +3,8 @@ from pydantic import BaseModel
 from typing import Optional, Type, TypeVar
 
 from pydantic.types import Json
-
-
+from pydantic import Field
+import uuid
 
 class MessageMetaExtensionsModel(BaseModel):
     """ Extensions to the AMQP Message protocol
@@ -14,7 +14,8 @@ class MessageMetaExtensionsModel(BaseModel):
 
 class MessageMetaModel(BaseModel):
     type: str
-    extensions: Optional[MessageMetaExtensionsModel] = {}
+    reference: str = Field(default_factory=uuid.uuid4)
+    extensions: Optional[MessageMetaExtensionsModel] = { }
 
 
 class MessageDataModel(BaseModel):

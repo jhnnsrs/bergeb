@@ -46,10 +46,20 @@ class LegacyApplication(BaseAuthBackend):
         data = { "username": self.username, "password": self.password, "grant_type": "password", "scope": " ".join(self.scopes), "client_id": self.client_id, "client_secret": self.client_secret}
 
         url = self.token_url + "/"
-        self.token = requests.post(url, data=data).json()["access_token"]
+        try:
+            response = requests.post(url, data=data).json()
+        except Exception as e:
+            raise e
 
 
-        return self.token # We actually get a fully fledged thing back
+        if "access_token" in response:
+            self.token = response["access_token"]
+            return self.token
+
+        else:
+            raise Exception(f"Wasn't authorized! {response}")
+
+
 
 
     def getClientType(self):

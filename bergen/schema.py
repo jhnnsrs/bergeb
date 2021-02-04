@@ -20,8 +20,8 @@ DataModel = ForwardRef("DataModel")
 class AssignationParams(ArnheimObject):
     provider: Optional[str]
 
-
-
+class ProvisionParams(ArnheimObject):
+    provider: Optional[str]
 
 class Avatar(ArnheimObject):
     user: Optional['User']
@@ -127,14 +127,18 @@ class PeasentTemplate(Template):
         identifier = "peasenttemplate"
 
 
-
-
 class Pod(ArnheimModel):
     template: Optional[Template]
     status: Optional[str]
 
     class Meta:
         identifier = "pod"
+
+class PeasentPod(Pod):
+    peasent: Optional[Peasent]
+
+    class Meta:
+        identifier = "peasentpod"
 
 
 class Provision(ArnheimModel):
@@ -153,6 +157,7 @@ class AssignationStatus(str, Enum):
     PROGRESS = "PROGRESS"
     DEBUG = "DEBUG"
     DONE = "DONE"
+    YIELD = "YIELD"
     CRITICAL ="CRITICAL"
     PENDING = "PENDING"
 

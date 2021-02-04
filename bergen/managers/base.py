@@ -7,7 +7,6 @@ class ModelConfigurationError(Exception):
     pass
 
 
-
 class BaseManager:
 
     def get_ward(self):

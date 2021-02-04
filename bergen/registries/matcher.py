@@ -1,3 +1,8 @@
+import logging
+
+logger = logging.getLogger(__name__)
+
+
 
 class TypeMatcher:
 
@@ -8,7 +13,7 @@ class TypeMatcher:
         identifier = identifier.lower()
         if identifier in self.map: 
             assert overwrite is True, "Attempting to overwrite, please provide overwrite in Call"
-            print(f"Overwriting {self.map[identifier]} with {model} for {identifier}")
+            logger.info(f"Overwriting {self.map[identifier]} with {model} for {identifier}")
         self.map[identifier] = model
 
     def getModelForIdentifier(self, identifier):

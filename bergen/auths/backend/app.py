@@ -1,4 +1,5 @@
 
+from oauthlib.oauth2.rfc6749.errors import InvalidClientError
 from bergen.auths.base import AuthError, BaseAuthBackend
 from oauthlib.oauth2.rfc6749.clients.backend_application import BackendApplicationClient
 from requests_oauthlib.oauth2_session import OAuth2Session 
@@ -41,13 +42,21 @@ class ArnheimBackendOauth(BaseAuthBackend):
 
         def fetch_token(thetry=0):
             try:
-                return oauth_session.fetch_token(token_url=self.token_url, client_id=self.client_id,
-                client_secret=self.client_secret, verify=self.verify)["access_token"]
+
+                token = oauth_session.fetch_token(token_url=self.token_url, client_id=self.client_id,
+                client_secret=self.client_secret, verify=self.verify)
+
+                if "access_token" not in token:
+                    raise Exception("No access token Provided")
+
+                return token["access_token"]
+            except InvalidClientError as e:
+                raise e
             except Exception as e:
                 if thetry == self.failedTries or not self.auto_retry: raise AuthError(f"Cannot connect to Arnheim instance on {self.token_url}: {e}")
                 logger.error(f"Couldn't connect to the Arnheim Instance at {self.token_url}. Retrying in 2 Seconds")
                 time.sleep(2)
-                fetch_token(thetry=thetry + 1)
+                return fetch_token(thetry=thetry + 1)
 
 
         self.token = fetch_token()

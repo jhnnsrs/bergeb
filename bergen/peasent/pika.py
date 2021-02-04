@@ -15,7 +15,6 @@ class PikaPeasent(BasePeasent):
 
         assignation = AssignationMessage.from_message(message=message)
 
-        print(message)
         message_body = json.loads(message.body.decode())
 
         assert "meta" in message_body, "No meta provided, check Arnheim Schema"
