@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from bergen.managers.base import BaseManager
-from typing import Callable, Dict, Generic, List, Optional, TypeVar, Type
+from typing import Any, Callable, Dict, Generic, List, Optional, TypeVar, Type
 from pydantic.fields import Field
 from pydantic.main import BaseModel, ModelMetaclass
 from bergen.query import DelayedGQL, GQL, TypedGQL
@@ -40,6 +40,10 @@ class ArnheimModelManager(BaseManager, Generic[ModelType]):
         typed_gql: TypedGQL = method(self.model)    
         return typed_gql.run(ward=ward, variables=parse_kwargs(kwargs))
 
+    def __getattr__(self, name: str) -> ModelType:
+        def function(**kwargs):
+            return self._call_meta(name, ward=self.get_ward(), **kwargs)
+        return function
 
     def get(self, ward=None, **kwargs) -> ModelType:
         """Gets an instance of this Model from the Dataprovider registered with Arnheim,
@@ -95,6 +99,11 @@ class ArnheimAsyncModelManager(BaseManager, Generic[ModelType]):
         typed_gql: TypedGQL = method(self.model)    
         return await typed_gql.run_async(ward=ward, variables=parse_kwargs(kwargs))
 
+
+    def __getattr__(self, name: str) -> ModelType:
+        async def function(**kwargs):
+            return await self._call_meta(name, ward=self.get_ward(), **kwargs)
+        return function
 
     async def get(self, ward=None, **kwargs) -> ModelType:
         return await self._call_meta("get", ward=ward, **kwargs)

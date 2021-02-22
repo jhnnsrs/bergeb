@@ -12,7 +12,7 @@
         {
             "label": "Publish",
             "type": "shell",
-            "command": "poetry publish"
+            "command": "source venv/bin/activate && poetry publish"
         },
         {
             "label": "Host",

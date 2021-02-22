@@ -5,7 +5,7 @@ import asyncio
 import time
 
 client = HostBergen(
-        host="p-tnagerl-lab1",
+        host="localhost",
         port=8000,
         client_id="DSNwVKbSmvKuIUln36FmpWNVE2KrbS2oRX0ke8PJ", 
         client_secret="Gp3VldiWUmHgKkIxZjL2aEjVmNwnSyIGHWbQJo6bWMDoIUlBqvUyoGWUWAe6jI3KRXDOsD13gkYVCZR0po1BLFO9QT4lktKODHDs0GyyJEzmIjkpEOItfdCC4zIa3Qzu",
@@ -19,8 +19,10 @@ sleep = Node.objects.get(package="basic", interface="sleep")
 @client.register(sleep, gpu=True)
 async def sleep(helper, interval=1):
     print("Was called")
-    await asyncio.sleep(interval)
-    return {"interval": interval}
+    for i in range(0,1):
+        await helper.progress(f"Sleeeping...{interval}",percentage=i*10)
+        await asyncio.sleep(interval)
+        yield {"interval": interval}
 
 
 client.run()

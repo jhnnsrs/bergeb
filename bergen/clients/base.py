@@ -18,7 +18,7 @@ def start_background_loop(loop: asyncio.AbstractEventLoop) -> None:
 class BaseBergen:
 
 
-    def __init__(self, auth: BaseAuthBackend, host: str, port: int, ssl=False, auto_negotiate=True, bind=True, log=logging.INFO, local=None, loop=None,  client_type: ClientType = None, jupyter=False, force_sync = False, **kwargs) -> None:
+    def __init__(self, auth: BaseAuthBackend= None, host: str = None, port: int = None, ssl=False, auto_negotiate=True, bind=True, log=logging.INFO, local=None, loop=None,  client_type: ClientType = None, jupyter=False, force_sync = False, **kwargs) -> None:
         
 
         if jupyter:
@@ -36,16 +36,15 @@ class BaseBergen:
         self.running_in_sync = force_sync
         
 
-        try:
-            self.loop = asyncio.get_running_loop()
+        
+        self.loop = asyncio.get_event_loop()
+        if self.loop.is_running():
             if self.running_in_sync:
                 import nest_asyncio
                 nest_asyncio.apply(self.loop)
-
-        except RuntimeError:
-            self.loop = asyncio.get_event_loop()
+            self.loop_is_running = True
+        else:
             self.loop_is_running = False
-            logger.info("Created New Eventloop")
 
         if bind: 
             # We only import this here for typehints

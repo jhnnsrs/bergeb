@@ -1,5 +1,6 @@
 from abc import abstractmethod
 from abc import ABC
+import asyncio
 from bergen.query import  TypedGQL
 from typing import TypeVar
 import namegenerator
@@ -15,7 +16,7 @@ class WardException(Exception):
 class BaseWard(ABC):
 
     def __init__(self, loop=None, name = None):
-        self.loop = loop
+        self.loop = loop or asyncio.get_event_loop()
         self.name = name or namegenerator.gen()
 
     @abstractmethod
@@ -28,3 +29,18 @@ class BaseWard(ABC):
     @abstractmethod
     def run_async(self, gql: TypedGQL, variables: dict = {}):
         return gql.cls(**{})
+
+
+    @abstractmethod
+    async def disconnect(self):
+        pass
+
+
+    async def __aenter__(self):
+        await self.configure()
+        return self
+
+
+    async def __aexit__(self, *args, **kwargs):
+        await self.disconnect()
+

@@ -25,7 +25,7 @@ class BaseGraphQLWard(BaseWard, ABC):
     def __init__(self, port=8000, host="localhost", protocol="http", token=None, loop = None) -> None:
         self._graphql_endpoint = f"{protocol}://{host}:{port}/graphql"
         self._token = token
-        self._headers = {"Authorization": f"Bearer: {self._token}"}
+        self._headers = {"Authorization": f"Bearer {self._token}"}
         
         self.sync_transport = RequestsHTTPTransport(self._graphql_endpoint, headers=self._headers, verify=True, retries=3)
         self.sync_transport.connect()
@@ -44,3 +44,7 @@ class BaseGraphQLWard(BaseWard, ABC):
 
         else:
             return self.loop.run_until_complete(self.run_async(the_query, variables=variables, **kwargs))
+
+
+
+        

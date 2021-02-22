@@ -17,6 +17,14 @@ from bergen.models import Node
 import inspect
 import sys
 
+import asyncio
+try:
+    from asyncio import create_task
+except ImportError:
+    #python 3.6 fix
+    create_task = asyncio.ensure_future
+
+
 logger = logging.getLogger()
 
 
@@ -27,9 +35,9 @@ class WebsocketHelper(BaseHelper):
         message.data.status = AssignationStatus.YIELD
         await self.peasent.send_to_connection(message)
 
-    async def pass_progress(self, message, value):
+    async def pass_progress(self, message, value, percentage=None):
         message.data.status = AssignationStatus.PROGRESS#
-        message.data.statusmessage = str(value)
+        message.data.statusmessage = f'{percentage if percentage else "--"} : {value}'
         await self.peasent.send_to_connection(message)
         pass
 
@@ -48,11 +56,13 @@ class WebsocketPeasent(BasePeasent):
     helperClass = WebsocketHelper
     ''' Is a mixin for Our Bergen '''
 
-    def __init__(self, *args, host="localhost", port=8000, ssl = False,**kwargs) -> None:
+    def __init__(self, *args, host= None, port= None, ssl = False, auto_reconnect=True, **kwargs) -> None:
         self.websocket_host = host
         self.websocket_port = port
         self.websocket_protocol = "wss" if ssl else "ws"
 
+
+        self.auto_reconnect= auto_reconnect
         self.allowed_retries = 2
         self.current_retries = 0
         self.pod_template_map = {}
@@ -62,28 +72,33 @@ class WebsocketPeasent(BasePeasent):
     async def configure(self):
         self.incoming_queue = asyncio.Queue()
         self.outgoing_queue = asyncio.Queue()
+        self.tasks = {}
         await self.startup()
         
     async def startup(self):
         try:
             await self.connect_websocket()
         except:
+
+            logger.error(f"Peasent Connection failed")
             self.current_retries += 1
-            if self.current_retries < self.allowed_retries:
+            if self.current_retries < self.allowed_retries and self.auto_reconnect:
                 sleeping_time = (self.current_retries + 1)
-                logger.error(f"Initial Connection failing: Trying again in {sleeping_time} seconds")
+                logger.info(f"Retrying in {sleeping_time} seconds")
                 await asyncio.sleep(sleeping_time)
                 await self.startup()
             else:
+                logger.error("No reconnecting attempt envisioned. Shutting Down!")
                 return
 
-        consumer_task = asyncio.create_task(
+        consumer_task = create_task(
             self.consumer()
         )
 
-        worker_task = asyncio.create_task(
+        worker_task = create_task(
             self.workers()
         )
+
 
 
         done, pending = await asyncio.wait(
@@ -97,7 +112,8 @@ class WebsocketPeasent(BasePeasent):
         for task in pending:
             task.cancel()
 
-        await self.startup()
+        self.current_retries = 0 # reset retries after one successfull connection
+        await self.startup() # Attempt to ronnect again
         
 
     async def connect_websocket(self):
@@ -130,8 +146,23 @@ class WebsocketPeasent(BasePeasent):
         while True:
             message = await self.incoming_queue.get()
             message = AssignationMessage.from_channels(message)
-            assert message.data.pod is not None, "Received assignation that had no Pod?"
-            asyncio.create_task(self.podid_function_map[message.data.pod](message)) # Run in parallel
+            if message.data.status == "CANCEL":
+                if message.data.reference in self.tasks: 
+                    logger.info("Cancellation for task received. Canceling!")
+                    task = self.tasks[message.data.reference]
+                    if not task.done():
+                        task.cancel()
+                        logger.warn("Canceled Task!!")
+                else:
+                    logger.error("Received Cancellation for task that was not in our tasks..")
+
+            else:  
+                assert message.data.pod is not None, "Received assignation that had no Pod?"
+                #
+                task = create_task(self.podid_function_map[message.data.pod](message))
+                self.tasks[message.data.reference] = task # Run in parallel
+
+
             self.incoming_queue.task_done()
 
 

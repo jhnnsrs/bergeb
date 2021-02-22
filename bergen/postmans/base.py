@@ -14,17 +14,22 @@ class BasePostman(ABC):
         pass
 
     @abstractmethod
-    def stream(inputs: dict, params: dict, **kwargs):
+    async def stream(inputs: dict, params: dict, **kwargs):
         return NotImplementedError( "Abstract class")
 
 
     @abstractmethod
-    async def assign(self, inputs: dict, params: dict, **kwargs):
+    async def assign(self, node, inputs: dict, params: dict, **kwargs):
 
         return NotImplementedError("This is abstract")
 
     @abstractmethod
-    async def provide(self, inputs: dict, params: dict, **kwargs):
+    async def provide(self, params: dict, **kwargs):
+
+        return NotImplementedError("This is abstract")
+
+    @abstractmethod
+    async def unprovide(self):
 
         return NotImplementedError("This is abstract")
 

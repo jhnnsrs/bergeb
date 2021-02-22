@@ -17,27 +17,20 @@ class ArnheimBackendOauth(BaseAuthBackend):
 
 
     def __init__(self, host: str, port: int, client_id: str, client_secret: str, protocol="http", verify=True, **kwargs) -> None:
-        self.host = host
-        self.port = port
+        super().__init__(host, port, protocol=protocol, **kwargs)
         self.client_id = client_id
         self.client_secret = client_secret
         self.protocol = protocol
         self.verify = verify
-
-        self.token = None
         self.base_url = f"{protocol}://{host}:{port}"       
         self.token_url = self.base_url + "/" + self.tokenurl_appendix
-        
-        super().__init__()
 
-    def getToken(self, loop=None) -> str:
-        if self.token: return self.token
-
+    def fetchToken(self, loop=None) -> str:
         # Connecting
         logger.info(f"Connecting to Arnheim at {self.token_url}")
         
-        auth_client = BackendApplicationClient(client_id=self.client_id)
-        oauth_session = OAuth2Session(client=auth_client)
+        auth_client = BackendApplicationClient(client_id=self.client_id, scope=self.scope)
+        oauth_session = OAuth2Session(client=auth_client, scope=self.scope)
 
 
         def fetch_token(thetry=0):
@@ -57,10 +50,8 @@ class ArnheimBackendOauth(BaseAuthBackend):
                 logger.error(f"Couldn't connect to the Arnheim Instance at {self.token_url}. Retrying in 2 Seconds")
                 time.sleep(2)
                 return fetch_token(thetry=thetry + 1)
-
-
-        self.token = fetch_token()
-        return self.token
+      
+        return fetch_token()
 
 
     def getClientType(self) -> ClientType:

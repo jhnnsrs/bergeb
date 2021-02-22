@@ -1,8 +1,8 @@
+from bergen.queries.delayed.pod import POD_QUERY
 from bergen.queries.delayed.template import TEMPLATE_GET_QUERY
 from bergen.extenders.port import PortExtender
 from bergen.types.object import ArnheimObject
 from bergen.types.model import ArnheimModel
-from bergen.delayed import CREATE_NODE_MUTATION, NODE_FILTER_QUERY, NODE_QUERY
 from enum import Enum
 from typing import  Any, Generic, List, Optional, Type, TypeVar
 try:
@@ -72,10 +72,27 @@ class Transcript(ArnheimObject):
     user: Optional[User]
 
 
+class Provider(ArnheimModel):
+    name: Optional[str]
+
+    class Meta:
+        identifier = "provider"
+
+
+class Widget(ArnheimObject):
+    query: Optional[str]
+    dependencies: Optional[List[str]]
+
+
 class Port(PortExtender, ArnheimObject):
+    __slots__ = ("_widget", )
+
     required: Optional[bool]
     key: Optional[str]
-    identifier: Optional[str] # Only for our friends the Models
+    identifier: Optional[str] 
+    label: Optional[str]
+    default: Optional[Any]
+    widget: Optional[Widget]
 
 
 class Node(ArnheimModel):
@@ -115,6 +132,7 @@ class Volunteer(ArnheimModel):
 
 class Template(ArnheimModel):
     node: Optional[Node]
+    provider: Optional[Provider]
 
     class Meta:
         identifier = "template"
@@ -128,6 +146,8 @@ class PeasentTemplate(Template):
 
 
 class Pod(ArnheimModel):
+    name: Optional[str]
+    channel: Optional[str]
     template: Optional[Template]
     status: Optional[str]
 

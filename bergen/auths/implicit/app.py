@@ -30,9 +30,9 @@ class ImplicitApplication(BaseAuthBackend):
         self.redirect_uri = redirect_uri
 
         # Generate correct URLs
-        self.base_url = f"{protocol}://{host}:{port}/o/"
-        self.auth_url = self.base_url + "authorize"
-        self.token_url = self.base_url + "token"
+        self.base_url = f"{protocol}://{host}:{port}/"
+        self.auth_url = self.base_url + "o/authorize"
+        self.token_url = self.base_url + "o/token"
 
         # If you want to have a hosting QtWidget
         self.parent = parent
@@ -40,33 +40,29 @@ class ImplicitApplication(BaseAuthBackend):
         self.token = None
 
 
-        self.mobile_app_client = MobileApplicationClient(client_id)
+
+        super().__init__(host, port, protocol=protocol, scopes=scopes, **kwargs)
+
+    def fetchToken(self, loop=None) -> str:
+        
+
+        self.mobile_app_client = MobileApplicationClient(self.client_id, scope=self.scope)
 
         # Create an OAuth2 session for the OSF
         self.session = OAuth2Session(
-            client_id, 
+            self.client_id, 
             self.mobile_app_client,
-            scope=" ".join(scopes), 
+            scope=self.scope, 
             redirect_uri=self.redirect_uri,
         )
 
-
-        super().__init__()
-
-    def getToken(self, loop=None) -> str:
-
         try:
-            if not self.token:
-                token, result = Dialog.getToken(backend=self, parent=self.parent)
-                if result:
-                    self.token = token
-                else:
-                    raise AuthError("Couldn't return a proper token")
+            token, result = Dialog.getToken(backend=self, parent=self.parent)
+            return token["access_token"]    
 
         except Exception as e:
             raise NotImplementedError("It appears that you have not Installed PyQt5")
-        
-        return self.token["access_token"] # We actually get a fully fledged thing back
+        # We actually get a fully fledged thing back
 
 
     def getClientType(self):

@@ -1,8 +1,9 @@
 
 from bergen.clients.host import HostBergen
-from bergen.models import Node
+from bergen.models import Node, Pod
 import asyncio
 import time
+
 
 client = HostBergen(
         host="p-tnagerl-lab1",
@@ -16,10 +17,13 @@ client = HostBergen(
 
 sleep = Node.objects.get(package="basic", interface="sleep")
 
+
 @client.register(sleep, gpu=True)
 async def sleep(helper, interval=1):
     print("Was called")
-    await asyncio.sleep(interval)
+    for i in range(0,1):
+        print(f"Sleeping for {interval}")
+        await asyncio.sleep(interval)
     return {"interval": interval}
 
 

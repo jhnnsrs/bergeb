@@ -9,6 +9,7 @@ class AssignationParams(BaseModel):
 
 class AssignationMetaExtensionsModel(MessageMetaExtensionsModel):
     progress: Optional[str]
+    callback: Optional[str]
 
 class AssignationMetaModel(MessageMetaModel):
     type: str = ASSIGNATION

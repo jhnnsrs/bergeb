@@ -18,7 +18,7 @@ import requests
 class AIOHttpGraphQLWard(BaseGraphQLWard):
     can_subscribe = False
 
-    def __init__(self, port, host, protocol, token, loop) -> None:
+    def __init__(self, port, host, protocol, token, loop=None) -> None:
         super().__init__(port=port, host=host, protocol=protocol, token=token, loop=loop)
 
     async def configure(self):
@@ -33,3 +33,6 @@ class AIOHttpGraphQLWard(BaseGraphQLWard):
         if response.errors:
             raise GraphQLException(str(response.errors))
         return the_query.extract(response.data)
+
+    async def disconnect(self):
+        await self.transport.close()

@@ -1,18 +1,23 @@
 
 class BaseWidget:
 
-  def __init__(self, type) -> None:
-      assert type is not None, "Please provide a Valid Type for the Widget"
+  def __init__(self, type, dependencies=None) -> None:
       self.type = type
+      self.dependencies = dependencies or []
+      assert isinstance(self.dependencies, list), "Depencies must be a list of strings"
+
       super().__init__()
 
 
   def serialize(self):
+
       return {
-          "type": type
+          "type": self.type,
+          "dependencies": self.dependencies,
+          **self.params()
 
       }
 
+  def params(self, port):
+      return {}
 
-  def deserialize(self, registry):
-      raise NotImplementedError("Please specifiy this")
