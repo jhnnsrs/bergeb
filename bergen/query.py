@@ -1,7 +1,8 @@
-from logging import Logger
+import logging
 import re
 from typing import Generator, Generic, List, Type, TypeVar
 
+logger = logging.getLogger(__name__)
 
 
 gqlparsed_with_variables = re.compile(r"[\s]*(?P<type>subscription|query|mutation)\s*(?P<operation>[a-zA-Z]*)\((?P<arguments>[^\)]*)\)[\s]*{[\s]*(?P<firstchild>[^\(:]*).*")
@@ -89,7 +90,11 @@ class TypedGQL(GQL, Generic[MyType]):
         returnedobject = await ward.run_async(self, variables=variables,**kwargs)
         assert returnedobject is not None, "We received nothing back from the Server! Refine your Query!"
         if isinstance(returnedobject,list): return ListQuery([self.cls(**item) for item in returnedobject])
-        return self.cls(**returnedobject)
+        try:
+            return self.cls(**returnedobject)
+        except Exception as e:
+            logger.error(returnedobject)
+            raise e
 
     def run(self, ward=None, variables=None, **kwargs) -> MyType:
         from bergen.registries.arnheim import get_current_arnheim

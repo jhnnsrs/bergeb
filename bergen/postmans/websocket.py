@@ -87,7 +87,7 @@ class WebsocketPostman(BasePostman):
         if self.consumer_task: self.consumer_task.cancel()
         if self.producer_task: self.producer_task.cancel()
         if self.sending_task: self.sending_task.cancel()
-        print("Bergen disconnected")
+        logger.info("Postman disconnected")
 
     async def startup(self):
         try:

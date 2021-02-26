@@ -1,6 +1,6 @@
 from bergen.wards.graphql.aiohttp import AIOHttpGraphQLWard
 from bergen.auths.base import BaseAuthBackend
-from typing import Callable
+from typing import Callable, Dict
 from bergen.enums import DataPointType
 from bergen.clients.base import BaseWard
 import logging
@@ -14,10 +14,10 @@ class DataPointRegistry(object):
 
 
     def __init__(self) -> None:
-        self.pointNameWardMap: dict[str, BaseWard] = {}
+        self.pointNameWardMap: Dict[str, BaseWard] = {}
         self.builders =  {
                 # Default Builders for standard
-                DataPointType.GRAPHQL: lambda datapoint, bergen: AIOHttpGraphQLWard(host=datapoint.host, port=datapoint.port, token=bergen.auth.getToken(), protocol=bergen.auth.getProtocol(), loop=bergen.loop)
+                DataPointType.GRAPHQL: lambda datapoint, bergen: AIOHttpGraphQLWard(host=datapoint.outward, port=datapoint.port, token=bergen.auth.getToken(), protocol=bergen.auth.getProtocol(), loop=bergen.loop)
         }
 
     def registerClientBuilder(self, type:str , builder: Callable):

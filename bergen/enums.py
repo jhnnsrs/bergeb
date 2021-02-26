@@ -8,11 +8,14 @@ class GrantType(str, Enum):
     BACKEND = "BACKEND"
 
 
+class PostmanProtocol(str, Enum):
+    WEBSOCKET = "WEBSOCKET"
+    KAFKA = "KAFKA"
+    RABBITMQ = "RABBITMQ"
 
 class ClientType(str, Enum):
-    EXTERNAL = "EXTERNAL"
-    INTERNAL = "INTERNAL"
-    USER = "USER"
+    HOST = "HOST"
+    CLIENT = "CLIENT"
 
 
 class DataPointType(str, Enum):

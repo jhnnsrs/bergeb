@@ -1,6 +1,7 @@
 import asyncio
+from typing import Dict
 from bergen.wards.graphql.aiohttp import AIOHttpGraphQLWard
-from bergen.enums import ClientType
+from bergen.enums import ClientType, PostmanProtocol
 from bergen.logging import setLogging
 from bergen.auths.base import BaseAuthBackend
 from bergen.wards.base import BaseWard
@@ -18,7 +19,7 @@ def start_background_loop(loop: asyncio.AbstractEventLoop) -> None:
 class BaseBergen:
 
 
-    def __init__(self, auth: BaseAuthBackend= None, host: str = None, port: int = None, ssl=False, auto_negotiate=True, bind=True, log=logging.INFO, local=None, loop=None,  client_type: ClientType = None, jupyter=False, force_sync = False, **kwargs) -> None:
+    def __init__(self, auth: BaseAuthBackend= None, host: str = None, port: int = None, ssl=False, auto_negotiate=True, bind=True, log=logging.INFO, local=None, loop=None,  client_type: ClientType = ClientType.CLIENT, jupyter=False, force_sync = False, **kwargs) -> None:
         
 
         if jupyter:
@@ -71,7 +72,7 @@ class BaseBergen:
 
         self._transcript = None
         self.identifierDataPointMap = {}
-        self.identifierWardMap: dict[str, BaseWard] = {}
+        self.identifierWardMap: Dict[str, BaseWard] = {}
 
 
         if auto_negotiate == True:
@@ -112,7 +113,7 @@ class BaseBergen:
     def getPostmanFromSettings(self, transcript):
         settings = transcript.postman
 
-        if settings.type == "pika":
+        if settings.type == PostmanProtocol.RABBITMQ:
             try:
                 from bergen.postmans.pika import PikaPostman
                 postman = PikaPostman(**settings.kwargs, loop=self.loop)
@@ -120,7 +121,7 @@ class BaseBergen:
                 logger.error("You cannot use the Pika Postman without installing aio_pika")
                 raise e
 
-        elif settings.type == "websocket":
+        elif settings.type == PostmanProtocol.WEBSOCKET:
             try:
                 from bergen.postmans.websocket import WebsocketPostman
                 postman = WebsocketPostman(**settings.kwargs, loop=self.loop)
@@ -143,8 +144,8 @@ class BaseBergen:
         await self.main_ward.configure()
 
         # We resort escalating to the different client Type protocols
-        clientType = client_type or self.client_type or self.auth.getClientType()
-        self._transcript = await NEGOTIATION_GQL.run_async(ward=self.main_ward, variables={"clientType": clientType, "local": self.local})
+        clientType = client_type or self.client_type
+        self._transcript = await NEGOTIATION_GQL.run_async(ward=self.main_ward, variables={"clientType": clientType})
         
 
         #Lets create our different Wards 

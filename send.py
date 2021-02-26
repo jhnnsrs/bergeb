@@ -8,19 +8,18 @@ import time
 async def main():
         async with Bergen(
                 host="p-tnagerl-lab1",
-                port=8000,
+                port=8090,
                 client_id="DSNwVKbSmvKuIUln36FmpWNVE2KrbS2oRX0ke8PJ", 
                 client_secret="Gp3VldiWUmHgKkIxZjL2aEjVmNwnSyIGHWbQJo6bWMDoIUlBqvUyoGWUWAe6jI3KRXDOsD13gkYVCZR0po1BLFO9QT4lktKODHDs0GyyJEzmIjkpEOItfdCC4zIa3Qzu",
                 name="karl",# if we want to specifically only use pods on this innstance we would use that it in the selector
         ) as client:
 
-                sleep = await Node.asyncs.get(package="basic", interface="sleep")
-                print(sleep)
+                sleep = await Node.asyncs.get(package="karl", interface="friend")
                 then = time.time()
-                result = await asyncio.gather(*[sleep({"interval": i}, with_progress=True) for i in range(0,3)])
-                print(time.time() - then)
+                result = await asyncio.gather(*[sleep({"interval": i}) for i in range(0,100)])
 
-                await asyncio.sleep(3)
+                print(result, time.time() - then)
+
 
 
 

@@ -1,8 +1,9 @@
 
 
 from abc import ABC, abstractmethod
+from bergen.messages.base import MessageModel
 from re import template
-from bergen.messages.allowance import AllowanceMessage
+from bergen.messages.activatepod import ActivatePodMessage
 from typing import Union
 from bergen.utils import ExpansionError, expandInputs
 from bergen.messages.assignation import AssignationMessage
@@ -78,9 +79,9 @@ class WebsocketPeasent(BasePeasent):
     async def startup(self):
         try:
             await self.connect_websocket()
-        except:
+        except Exception as e:
 
-            logger.error(f"Peasent Connection failed")
+            logger.error(f"Peasent Connection failed {e}")
             self.current_retries += 1
             if self.current_retries < self.allowed_retries and self.auto_reconnect:
                 sleeping_time = (self.current_retries + 1)
@@ -95,14 +96,16 @@ class WebsocketPeasent(BasePeasent):
             self.consumer()
         )
 
+        producer_task = create_task(
+            self.producer()
+        )
+
         worker_task = create_task(
             self.workers()
         )
 
-
-
         done, pending = await asyncio.wait(
-            [consumer_task, worker_task],
+            [consumer_task, worker_task, producer_task],
             return_when=asyncio.FIRST_EXCEPTION
         )
 
@@ -118,18 +121,18 @@ class WebsocketPeasent(BasePeasent):
 
     async def connect_websocket(self):
 
-        hostable_pods = [str(podid) for podid, function in self.podid_pod_map.items()]
-        hostable_pods_qstring = ",".join(hostable_pods)
-
-        uri = f"{self.websocket_protocol}://{self.websocket_host}:{self.websocket_port}/peasent/{self.unique_name}/?token={self.token}&pods={hostable_pods_qstring}"
+        uri = f"{self.websocket_protocol}://{self.websocket_host}:{self.websocket_port}/provider/?token={self.token}"
         
         self.connection = await websockets.client.connect(uri)
-        # Our initial payload will be the Pods that were registered! Our allowance
-        message = await self.connection.recv()
-        allowance = AllowanceMessage.from_channels(message=message)
 
-        self.pod_template_map = allowance.data.pod_template_map
-        logger.info(f"We are able to host these pods {[ pod for pod, template in self.pod_template_map.items()]}")
+        for pod_id, function in self.podid_function_map.items():
+            activate_pod = ActivatePodMessage(data={"pod": pod_id})
+            logger.info(f"Requesting to Host {activate_pod}")
+            await self.send_to_connection(activate_pod)
+
+
+
+
 
 
     async def consumer(self):
@@ -138,14 +141,21 @@ class WebsocketPeasent(BasePeasent):
             await self.incoming_queue.put(message)
 
 
-    async def send_to_connection(self, message: AssignationMessage):
-        await self.connection.send(message.to_channels())
+    async def producer(self):
+        while True:
+            message = await self.outgoing_queue.get()
+            await self.connection.send(message.to_channels())
+
+
+    async def send_to_connection(self, message: MessageModel):
+        await self.outgoing_queue.put(message)
        
 
     async def workers(self):
         while True:
             message = await self.incoming_queue.get()
             message = AssignationMessage.from_channels(message)
+            logger.info("Received Assignation")
             if message.data.status == "CANCEL":
                 if message.data.reference in self.tasks: 
                     logger.info("Cancellation for task received. Canceling!")

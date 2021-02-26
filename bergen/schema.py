@@ -1,3 +1,4 @@
+from bergen.enums import PostmanProtocol
 from bergen.queries.delayed.pod import POD_QUERY
 from bergen.queries.delayed.template import TEMPLATE_GET_QUERY
 from bergen.extenders.port import PortExtender
@@ -40,7 +41,8 @@ class User(ArnheimModel):
 class DataPoint(ArnheimModel):
     type: Optional[str]
     name: Optional[str]
-    host: Optional[str]
+    inward: Optional[str]
+    outward: Optional[str]
     port: Optional[int]
     url: Optional[str]
     models: Optional[List[DataModel]]
@@ -58,18 +60,16 @@ class DataModel(ArnheimModel):
         identifier = "datamodel"
 
 
-class PostmanArgs(ArnheimObject):
-    type: Optional[str]
+
+class PostmanSettings(ArnheimObject):
+    type: Optional[PostmanProtocol]
     kwargs: Optional[dict]
 
 
 class Transcript(ArnheimObject):
-    array: Optional[Any]
     extensions: Optional[Any]
-    postman: Optional[PostmanArgs]
+    postman: Optional[PostmanSettings]
     models: Optional[List[DataModel]]
-    points: Optional[List[DataPoint]]
-    user: Optional[User]
 
 
 class Provider(ArnheimModel):

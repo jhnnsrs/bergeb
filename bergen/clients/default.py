@@ -25,14 +25,19 @@ class Bergen(BaseBergen):
         protocol = protocol or os.getenv("ARNHEIM_PROTOCOL", "http")
         host = host or os.getenv("ARNHEIM_HOST", "localhost")
         port = int(port or os.getenv("ARNHEIM_PORT", "8000"))
+
+        herre_host = "p-tnagerl-lab1"
+        herre_port = 8000
+
+
         client_id = client_id or os.getenv("ARNHEIM_CLIENT_ID", None)
         client_secret = client_secret or os.getenv("ARNHEIM_CLIENT_SECRET", None)
         grant_type = grant_type or os.getenv("ARNHEIM_GRANT_TYPE", GrantType.BACKEND)
         
 
-        if grant_type == GrantType.BACKEND: auth = ArnheimBackendOauth(host=host, port=port, client_id=client_id, client_secret=client_secret, protocol=protocol, verify=True, **kwargs)
-        elif grant_type == GrantType.IMPLICIT: auth = ImplicitApplication(host=host, port=port, client_id=client_id, client_secret=client_secret, protocol=protocol, verify=True, **kwargs)
-        elif grant_type == GrantType.PASSWORD: auth = LegacyApplication(host=host, port=port, client_id=client_id, client_secret=client_secret, protocol=protocol, verify=True, **kwargs)
+        if grant_type == GrantType.BACKEND: auth = ArnheimBackendOauth(host=herre_host, port=herre_port, client_id=client_id, client_secret=client_secret, protocol=protocol, verify=True, **kwargs)
+        elif grant_type == GrantType.IMPLICIT: auth = ImplicitApplication(host=herre_host, port=herre_port, client_id=client_id, client_secret=client_secret, protocol=protocol, verify=True, **kwargs)
+        elif grant_type == GrantType.PASSWORD: auth = LegacyApplication(host=herre_host, port=herre_port, client_id=client_id, client_secret=client_secret, protocol=protocol, verify=True, **kwargs)
         else: raise NotImplementedError("Please Specifiy a valid Grant Type")
 
         super().__init__(auth=auth, host=host, port=port, protocol=protocol, auto_negotiate=True, bind=bind, **kwargs)

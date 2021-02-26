@@ -10,15 +10,15 @@ INPUTS_FR = """
       widget {
         __typename
         dependencies
-        ... on QueryWidgetType {
+        ... on QueryWidget {
           query  
         }
       }
       label
-      ... on ModelPortType {
+      ... on ModelInPort {
         identifier
       }
-      ... on IntPortType {
+      ... on IntInPort {
         default
       }
   }
@@ -29,9 +29,8 @@ OUTPUTS_FR = """
   outputs {
     __typename
       key
-      required
       description
-      ... on ModelPortType {
+      ... on ModelOutPort {
         identifier
       }
   }
@@ -79,8 +78,8 @@ CREATE_NODE_MUTATION = DelayedGQL("""
 
 
 UPDATE_OR_CREATE_NODE = DelayedGQL("""
-  mutation UpdateOrCreateNode($description: String!, $inputs: [InPortInputType]!, $outputs: [OutPortInputType]!, $package: String!, $interface: String!, $name: String!){
-  updateOrCreateNode(description: $description, inputs: $inputs, outputs: $outputs, package:$package, interface: $interface, name: $name){
+  mutation UpdateOrCreateNode($description: String!, $inputs: [InPortInput]!, $outputs: [OutPortInput]!, $package: String!, $interface: String!, $name: String!){
+  createNode(description: $description, inputs: $inputs, outputs: $outputs, package:$package, interface: $interface, name: $name){
      id
     name
     image

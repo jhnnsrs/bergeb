@@ -5,22 +5,14 @@ from bergen.query import TypedGQL
 
 NEGOTIATION_GQL = TypedGQL("""
 
-  mutation Negotiate($clientType: ClientType!, $local: Boolean!) {
+  mutation Negotiate($clientType: ClientTypeInput!) {
   negotiate(clientType: $clientType) {
-    array {
-      path
-      params
-    }
     timestamp
-    user {
-        username
-    }
     extensions
     models {
         identifier
         point {
-            name
-            host (local: $local)
+            outward
             port
             type
         }
@@ -29,15 +21,6 @@ NEGOTIATION_GQL = TypedGQL("""
         type
         kwargs
     }
-    points {
-      host
-      name
-      models {
-        identifier
-        extenders
-      }
-    }
-    
   }
   }
 """, Transcript)
@@ -47,7 +30,7 @@ NEGOTIATION_GQL = TypedGQL("""
 
 SERVE_GQL = TypedGQL("""
     mutation Serve($name: String!){
-        serve(name:$name){
+        serve(name: $name){
             id
             name
             
@@ -57,10 +40,9 @@ SERVE_GQL = TypedGQL("""
 
 
 
-
 OFFER_GQL = TypedGQL("""
-    mutation Offer($node: ID!, $params: GenericScalar!, $peasent: ID!){
-        offer(node: $node, params: $params, peasent: $peasent ){
+    mutation Offer($node: ID!, $params: GenericScalar!){
+        offer(node: $node, params: $params){
             id
             name 
         }
@@ -69,11 +51,11 @@ OFFER_GQL = TypedGQL("""
 
 
 ACCEPT_GQL = TypedGQL("""
-    mutation AcceptMutation($peasent: ID!, $template: ID!){
-        accept(peasent: $peasent, template: $template){
+    mutation Accept($template: ID!){
+        accept(template: $template){
             id
         }
-        }
+    }
 """, Pod)
 
 
