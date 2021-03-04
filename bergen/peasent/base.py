@@ -235,7 +235,7 @@ class BasePeasent(ABC):
 
     async def setup_and_run(self):
 
-        logger.info("Offering Our Services")
+        logger.info("Offering Our Services as Provider")
         self.peasent = await SERVE_GQL.run_async(ward=self.main_ward, variables = {"name":self.unique_name})
         logger.info("Our Offer was Accesspted")
 
@@ -250,19 +250,24 @@ class BasePeasent(ABC):
         # We can now combing reigstered templates and already registered templates
         all_templates_function_set =  template_function_set + self.template_function_set
 
+
+        # Okay 
+
+
         logger.info("We are our Pods")
         async def accept(template: Template, function):
-            peasent_pod = await ACCEPT_GQL.run_async(ward=self.main_ward, variables= {"template": template.id, "peasent": self.peasent.id})
-            return (peasent_pod, function)
+            pod = await ACCEPT_GQL.run_async(ward=self.main_ward, variables= {"template": template.id, "peasent": self.peasent.id})
+            return (pod, function)
 
 
         pod_function_set = await asyncio.gather(*[accept(*values) for values in all_templates_function_set])
        
-        # We can now combing potential templates pods and already potential pods
+        # We can now combing registered templates pods and already registerd pods
         all_pod_function_set = pod_function_set + self.pod_function_set
 
+        
+        self.templateid_function_map = {value[0].template.id: value[1] for value in all_pod_function_set}
         self.podid_function_map = {value[0].id: value[1] for value in all_pod_function_set}
-        self.podid_pod_map = {value[0].id: value[0] for value in all_pod_function_set}
 
 
         logger.info(f"Following functions have been allowed! {[value[1].__name__ for value in all_pod_function_set]}")
@@ -308,7 +313,7 @@ class BasePeasent(ABC):
                 if issubclass(value, ArnheimModel):
                     outputs.append(ModelOutPort(value, key=key))
                 if issubclass(value, int):
-                    outputs.append(IntOutPort(value, key=key))
+                    outputs.append(IntOutPort(key=key))
 
 
             #

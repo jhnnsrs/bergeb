@@ -41,8 +41,51 @@ async def friend(helper, rep: ArnheimApplication = None, interval: int = 5) -> T
     Returns:
         [type]: [description]
     """
-
+    print("HALlo")
+    await asyncio.sleep(1)
     return {"rep": 1}
+
+
+
+@client.enable(gpu=True, 
+                widgets={
+                    "rep": QueryWidget("""
+                            query {
+                                data: myrepresentations {
+                                    value: id
+                                    label: name
+                            }
+                            """)
+
+})
+async def maxisp(helper, rep: ArnheimApplication = None, interval: int = 5) -> TypedDict("",rep=ArnheimApplication):
+    """Maximum Intensity Projection
+
+
+    A maximum projects an image according and doue toiunsoinsoepinoseikn
+
+    Args:
+        rep ([type], optional): Ohhh boy you would like to know. Defaults to None.
+
+    Returns:
+        [type]: [description]
+    """
+    print("HALlo")
+    await asyncio.sleep(1)
+    return {"rep": 1}
+
+
+
+@client.enable(gpu=True)
+def sobelFilter(helper, sigma: int, file_path: int) -> TypedDict("", sigma=int):
+    """Sobel Filter
+
+    Sobel filter filters an image with a sobel filter
+    """
+    print("logici")
+
+    return { "sigma": 5}
+
 
 
 

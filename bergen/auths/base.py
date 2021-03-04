@@ -61,7 +61,7 @@ class BaseAuthBackend(ABC):
         
         else:
             if self.needs_validation:
-                response = requests.post(self.check_url, {"token": self.token}, headers={"Authorization": f"Bearer: {self.token}"})
+                response = requests.post(self.check_url, {"token": self.token}, headers={"Authorization": f"Bearer {self.token}"})
                 print(response.status_code)
                 self.needs_validation = False
                 if response.status_code == 200:

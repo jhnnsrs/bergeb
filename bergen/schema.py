@@ -133,16 +133,12 @@ class Volunteer(ArnheimModel):
 class Template(ArnheimModel):
     node: Optional[Node]
     provider: Optional[Provider]
+    channel: Optional[str]
 
     class Meta:
         identifier = "template"
         get = TEMPLATE_GET_QUERY
 
-
-class PeasentTemplate(Template):
-
-    class Meta:
-        identifier = "peasenttemplate"
 
 
 class Pod(ArnheimModel):

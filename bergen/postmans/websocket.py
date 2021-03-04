@@ -1,9 +1,10 @@
 from asyncio.tasks import ensure_future
+from bergen.messages.postman.assign import AssignMessage
 from bergen.messages.provision_request import ProvisionRequestMessage
 from bergen.utils import expandOutputs, shrinkInputs
 from bergen.messages.assignation import AssignationMessage
 from bergen.messages.provision import ProvisionMessage
-from bergen.messages.exceptions.base import ExceptionMessage
+from bergen.messages.exception import ExceptionMessage
 from bergen.messages.types import ASSIGNATION, EXCEPTION, PROVISION
 from bergen.messages.base import MessageModel
 from bergen.messages.assignation_request import AssignationAction, AssignationRequestMessage
@@ -161,7 +162,7 @@ class WebsocketPostman(BasePostman):
                 if parsed_message.meta.type == EXCEPTION: #Protocol Exception
                     parsed_exception = ExceptionMessage.from_channels(message=message)
                     future = self.futures.pop(parsed_exception.meta.reference)
-                    future.set_exception(Exception(parsed_exception.data.message))
+                    future.set_exception(parsed_exception.toException())
 
 
                 elif parsed_message.meta.type == ASSIGNATION: # Assignation Exception
@@ -218,7 +219,7 @@ class WebsocketPostman(BasePostman):
 
         self.active_stream_queues[correlation_id] = asyncio.Queue()
 
-        request = AssignationRequestMessage(data={
+        request = AssignMessage(data={
                                                 "node":node.id, 
                                                 "inputs": assigned_inputs, 
                                                 "params": dict(params or {}),
@@ -303,27 +304,24 @@ class WebsocketPostman(BasePostman):
 
         assigned_inputs = await shrinkInputs(node=node_or_pod, inputs=inputs)
 
+        
        
         #TODO: Implement assigning to pod directly
-        request = AssignationRequestMessage(data={
-                                                "node":node_or_pod.id, 
+        request = AssignMessage(data={
+                                                "node": node_or_pod.id, 
                                                 "inputs": assigned_inputs, 
                                                 "params": dict(params or {}),
-                                                "reference": correlation_id,
-                                                "callback": None,
-                                                "progress": None,
                                             },
                                             meta={
                                                 "reference": correlation_id,
-                                                "auth": {
-                                                    "token": self.token
-                                                },
-                                                "extensions": extensions
+                                                "extensions": {
+                                                    "progress": correlation_id,
+                                                    "callback": correlation_id
+                                                }
                                             })
 
 
         await self.send_to_arnheim(request)
-
 
 
         future.add_done_callback(partial(self.check_if_cancelled, request))  

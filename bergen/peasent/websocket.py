@@ -132,12 +132,10 @@ class WebsocketPeasent(BasePeasent):
 
 
 
-
-
-
     async def consumer(self):
         logger.warning(" [x] Awaiting Node Calls")
         async for message in self.connection:
+            logger.info(f"Incoming {message}")
             await self.incoming_queue.put(message)
 
 
@@ -167,9 +165,8 @@ class WebsocketPeasent(BasePeasent):
                     logger.error("Received Cancellation for task that was not in our tasks..")
 
             else:  
-                assert message.data.pod is not None, "Received assignation that had no Pod?"
-                #
-                task = create_task(self.podid_function_map[message.data.pod](message))
+                assert message.data.template is not None, "Received assignation that had no Template???"
+                task = create_task(self.templateid_function_map[message.data.pod](message))
                 self.tasks[message.data.reference] = task # Run in parallel
 
 

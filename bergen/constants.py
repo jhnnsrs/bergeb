@@ -1,5 +1,5 @@
 
-from bergen.schema import Assignation, Node, Peasent, PeasentTemplate, Pod, Provision, Transcript, VartPod, Volunteer
+from bergen.schema import Assignation, Node, Peasent, Template, Pod, Provision, Transcript, VartPod, Volunteer
 from bergen.query import TypedGQL
 
 
@@ -47,13 +47,16 @@ OFFER_GQL = TypedGQL("""
             name 
         }
     }
-""", PeasentTemplate)
+""", Template)
 
 
 ACCEPT_GQL = TypedGQL("""
     mutation Accept($template: ID!){
         accept(template: $template){
             id
+            template {
+                channel
+            }
         }
     }
 """, Pod)

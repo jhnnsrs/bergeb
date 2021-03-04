@@ -14,9 +14,9 @@ async def main():
                 name="karl",# if we want to specifically only use pods on this innstance we would use that it in the selector
         ) as client:
 
-                sleep = await Node.asyncs.get(package="karl", interface="friend")
+                sleep = await Node.asyncs.get(package="karl", interface="sobelFilter")
                 then = time.time()
-                result = await asyncio.gather(*[sleep({"interval": i}) for i in range(0,100)])
+                result = await asyncio.gather(*[sleep({"sigma": i, "file_path": 1}) for i in range(0,1)])
 
                 print(result, time.time() - then)
 

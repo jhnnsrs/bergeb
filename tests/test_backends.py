@@ -7,7 +7,7 @@ import pytest
 @pytest.fixture
 def backend_client():
     return Bergen(host="p-tnagerl-lab1",
-        port=8000,
+        port=8090,
         client_id="DSNwVKbSmvKuIUln36FmpWNVE2KrbS2oRX0ke8PJ", 
         client_secret="Gp3VldiWUmHgKkIxZjL2aEjVmNwnSyIGHWbQJo6bWMDoIUlBqvUyoGWUWAe6jI3KRXDOsD13gkYVCZR0po1BLFO9QT4lktKODHDs0GyyJEzmIjkpEOItfdCC4zIa3Qzu",
         name="karl",# if we want to specifically only use pods on this innstance we would use that it in the selector
@@ -18,7 +18,7 @@ def password_client():
     return Bergen(host="p-tnagerl-lab1",
                     client_id= "EEjI4z8Gahr6TU6dujnq2Q6pAojcit3iCILF9Ggm",
                     client_secret= "Onbmcglhf18rXi0D1pvfeCwnuIGZZV8xpbktzdFXaMs5zpIFG5NJRR2R7pS7RlCgZ6bfiId317XUIrQ1EudJye2WNpZ5jjvbQWul4nyuEECNestHCIUEPCBb3B8DmdwV",
-                    port=8000,
+                    port=8090,
                     name="karl",
                     username = "stephane",
                     password = "bancelin12345",
