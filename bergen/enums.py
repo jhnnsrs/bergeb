@@ -1,12 +1,11 @@
 
 from enum import Enum
 
+class HostProtocol(str, Enum):
+    WEBSOCKET = "WEBSOCKET"
 
-class GrantType(str, Enum):
-    IMPLICIT = "IMPLICIT"
-    PASSWORD = "PASSWORD"
-    BACKEND = "BACKEND"
-
+class ProviderProtocol(str, Enum):
+    WEBSOCKET = "WEBSOCKET"
 
 class PostmanProtocol(str, Enum):
     WEBSOCKET = "WEBSOCKET"
@@ -16,6 +15,7 @@ class PostmanProtocol(str, Enum):
 class ClientType(str, Enum):
     HOST = "HOST"
     CLIENT = "CLIENT"
+    PROVIDER = "PROVIDER"
 
 
 class DataPointType(str, Enum):

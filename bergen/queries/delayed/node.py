@@ -2,7 +2,7 @@ from bergen.query import DelayedGQL
 
 
 INPUTS_FR = """
-  inputs {
+  args {
     __typename
       key
       required
@@ -15,10 +15,30 @@ INPUTS_FR = """
         }
       }
       label
-      ... on ModelInPort {
+      ... on ModelArgPort {
         identifier
       }
-      ... on IntInPort {
+      ... on IntArgPort {
+        default
+      }
+  }
+  kwargs {
+    __typename
+      key
+      required
+      description
+      widget {
+        __typename
+        dependencies
+        ... on QueryWidget {
+          query  
+        }
+      }
+      label
+      ... on ModelKwargPort {
+        identifier
+      }
+      ... on IntKwargPort {
         default
       }
   }
@@ -26,15 +46,22 @@ INPUTS_FR = """
 
 
 OUTPUTS_FR = """
-  outputs {
+  returns {
     __typename
       key
       description
-      ... on ModelOutPort {
+      ... on ModelReturnPort {
         identifier
       }
   }
 """
+
+
+
+DETAIL_NODE_FR = """
+  name
+  id
+""" + INPUTS_FR + OUTPUTS_FR 
 
 
 NODE_QUERY = DelayedGQL("""
@@ -65,8 +92,15 @@ query NodeFilter($name: String){
 
 
 CREATE_NODE_MUTATION = DelayedGQL("""
-  mutation CreateNodeMutation($description: String!, $inputs: [InPortInputType]!, $outputs: [OutPortInputType]!, $package: String!, $interface: String!, $name: String!){
-  createNode(description: $description, inputs: $inputs, outputs: $outputs, package:$package, interface: $interface, name: $name){
+  mutation CreateNodeMutation(
+    $description: String!,
+    $args: [ArgPortInput]!,
+    $kwargs: [KwargPortInput]!,
+    $returns: [ReturnPortInput]!,
+    $package: String!, $interface: String!,
+    $name: String!
+    $type: NodeTypeInput){
+  createNode(description: $description, args: $args, kwargs: $kwargs, returns: $returns, package:$package, interface: $interface, name: $name, type: $type){
     id
     name
     image
@@ -78,9 +112,9 @@ CREATE_NODE_MUTATION = DelayedGQL("""
 
 
 UPDATE_OR_CREATE_NODE = DelayedGQL("""
-  mutation UpdateOrCreateNode($description: String!, $inputs: [InPortInput]!, $outputs: [OutPortInput]!, $package: String!, $interface: String!, $name: String!){
-  createNode(description: $description, inputs: $inputs, outputs: $outputs, package:$package, interface: $interface, name: $name){
-     id
+  mutation CreateNodeMutation($description: String!, $args: [ArgPortInput]!, $kwargs: [KwargPortInput]!, $returns: [ReturnPortInput]!, $package: String!, $interface: String!, $name: String!, $type: NodeTypeInput){
+  createNode(description: $description, args: $args, kwargs: $kwargs, returns: $returns, package:$package, interface: $interface, name: $name, type: $type){
+    id
     name
     image
 """ + INPUTS_FR + """

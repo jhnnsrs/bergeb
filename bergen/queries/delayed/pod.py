@@ -1,3 +1,4 @@
+from bergen.queries.delayed.node import DETAIL_NODE_FR
 from bergen.query import DelayedGQL
 
 
@@ -14,26 +15,11 @@ query Pod($id: ID){
       provider {
         name
       }
-      node {
-        id
-        name
-        image
-        inputs {
-          __typename
-          key
-          required
-          ... on ModelPortType {
-            identifier
-          }
-        }
-        outputs {
-          __typename
-          key
-          required
-          ... on ModelPortType {
-            identifier
-          }
-        }
+      node {"""
+
++ DETAIL_NODE_FR + 
+
+"""
       }
     }
   }

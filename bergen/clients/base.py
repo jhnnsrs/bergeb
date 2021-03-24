@@ -1,7 +1,11 @@
 import asyncio
+from oauthlib.oauth2.rfc6749.clients.base import Client
+
+from pydantic.main import BaseModel
+from bergen.auths.types import User
 from typing import Dict
 from bergen.wards.graphql.aiohttp import AIOHttpGraphQLWard
-from bergen.enums import ClientType, PostmanProtocol
+from bergen.enums import ClientType, HostProtocol, PostmanProtocol, ProviderProtocol
 from bergen.logging import setLogging
 from bergen.auths.base import BaseAuthBackend
 from bergen.wards.base import BaseWard
@@ -16,12 +20,31 @@ import os
 def start_background_loop(loop: asyncio.AbstractEventLoop) -> None:
     asyncio.set_event_loop(loop)
 
+
+class ArkitektConfig(BaseModel):
+    secure: bool
+    host: str
+    port: int
+
+    def __str__(self) -> str:
+        return f"{'Secure' if self.secure else 'Insecure'} Connection to Arkitekt on {self.host}:{self.port}"
+
+
+
 class BaseBergen:
 
 
-    def __init__(self, auth: BaseAuthBackend= None, host: str = None, port: int = None, ssl=False, auto_negotiate=True, bind=True, log=logging.INFO, local=None, loop=None,  client_type: ClientType = ClientType.CLIENT, jupyter=False, force_sync = False, **kwargs) -> None:
+    def __init__(self, auth: BaseAuthBackend, config: ArkitektConfig , 
+            auto_negotiate=True,
+            bind=True,
+            log=logging.INFO,
+            jupyter=False,
+            name=None,
+            force_sync = False,
+            loop = None,
+            client_type: ClientType = ClientType.CLIENT,
+            **kwargs) -> None:
         
-
         if jupyter:
             setLogging(logging.ERROR)
         else:
@@ -36,43 +59,44 @@ class BaseBergen:
 
         self.running_in_sync = force_sync
         
-
-        
-        self.loop = asyncio.get_event_loop()
+        self.loop = loop or asyncio.get_event_loop()
         if self.loop.is_running():
             if self.running_in_sync:
+                logger.warn("force_insync within event-loop. unexpected errors might be happening")
                 import nest_asyncio
                 nest_asyncio.apply(self.loop)
             self.loop_is_running = True
         else:
             self.loop_is_running = False
 
+        
         if bind: 
             # We only import this here for typehints
             from bergen.registries.arnheim import set_current_arnheim
             set_current_arnheim(self)
 
-        
-
-        self.local = local if local is not None else os.getenv("ARNHEIM_LOCAL") == "1" 
-
-        if self.local:
-            logger.info("Running in Local Mode")
-
+        self.auth = auth
+        self.config = config
+        self.name = name
         self.client_type = client_type
 
 
-        self.auth = auth
         self.token = self.auth.getToken()
-        logger.info(" Auhorized!!!!!")
 
-        self.host = host
-        self.port = port
-        self.protocol = "https" if ssl else "http"
+        logger.info("We are authorized")
+        logger.info(str(config))
+
+
+        self.host = config.host
+        self.port = config.port
+        self.protocol = "https" if config.secure else "http"
 
         self._transcript = None
         self.identifierDataPointMap = {}
         self.identifierWardMap: Dict[str, BaseWard] = {}
+
+        self._provider = None
+        self._entertainer = None
 
 
         if auto_negotiate == True:
@@ -98,6 +122,9 @@ class BaseBergen:
         return self.transcript.extensions[extension]
 
     def getWardForIdentifier(self, identifier):
+        if identifier in ["node","template","pod"]:
+            return self.main_ward
+
         if self._transcript is None:
             if self.running_in_sync:
                 raise Exception("Not negotiated Error: Please negotiate first or set auto_negotiate=True")
@@ -107,7 +134,7 @@ class BaseBergen:
         if identifier in self.identifierWardMap:
             return self.identifierWardMap[identifier]
         else:
-            return self.main_ward
+            raise Exception(f"Couldn't find a Ward/Datapoint for Model {identifier}, this mostly results from importing a schema that isn't part of your arkitekts configuration ..Check Documentaiton")
 
 
     def getPostmanFromSettings(self, transcript):
@@ -116,7 +143,7 @@ class BaseBergen:
         if settings.type == PostmanProtocol.RABBITMQ:
             try:
                 from bergen.postmans.pika import PikaPostman
-                postman = PikaPostman(**settings.kwargs, loop=self.loop)
+                postman = PikaPostman(**settings.kwargs, loop=self.loop, client=self)
             except ImportError as e:
                 logger.error("You cannot use the Pika Postman without installing aio_pika")
                 raise e
@@ -124,7 +151,7 @@ class BaseBergen:
         elif settings.type == PostmanProtocol.WEBSOCKET:
             try:
                 from bergen.postmans.websocket import WebsocketPostman
-                postman = WebsocketPostman(**settings.kwargs, loop=self.loop)
+                postman = WebsocketPostman(**settings.kwargs, loop=self.loop, client=self)
             except ImportError as e:
                 logger.error("You cannot use the Websocket Postman without installing websockets")
                 raise e
@@ -134,8 +161,39 @@ class BaseBergen:
 
         return postman
 
+    def getProviderFromSettings(self, transcript):
+        settings = transcript.provider
+
+        if settings.type == ProviderProtocol.WEBSOCKET:
+            try:
+                from bergen.provider.websocket import WebsocketProvider
+                provider = WebsocketProvider(**settings.kwargs, loop=self.loop, client=self, name=self.name)
+            except ImportError as e:
+                logger.error("You cannot use the Websocket Provider without installing websockets")
+                raise e
+
+        else:
+            raise Exception(f"Provider couldn't be configured. No Provider for type {settings.type}")
+
+        return provider
+
+    def getEntertainerFromSettings(self, transcript):
+        settings = transcript.host
+
+        if settings.type == HostProtocol.WEBSOCKET:
+            try:
+                from bergen.entertainer.websocket import WebsocketHost
+                provider = WebsocketHost(**settings.kwargs, loop=self.loop, client=self)
+            except ImportError as e:
+                logger.error("You cannot use the Websocket Entertainer without installing websockets")
+                raise e
+
+        else:
+            raise Exception(f"Entertainer couldn't be configured. No Entertainer for type {settings.type}")
+
+        return provider
     
-    async def negotiate_async(self, client_type=None):
+    async def negotiate_async(self):
         from bergen.constants import NEGOTIATION_GQL
         from bergen.registries.datapoint import get_datapoint_registry
 
@@ -144,8 +202,8 @@ class BaseBergen:
         await self.main_ward.configure()
 
         # We resort escalating to the different client Type protocols
-        clientType = client_type or self.client_type
-        self._transcript = await NEGOTIATION_GQL.run_async(ward=self.main_ward, variables={"clientType": clientType})
+        logger.info(f"Negotiating to be a {self.client_type}")
+        self._transcript = await NEGOTIATION_GQL.run_async(ward=self.main_ward, variables={"clientType": self.client_type, "name": self.name})
         
 
         #Lets create our different Wards 
@@ -164,13 +222,45 @@ class BaseBergen:
 
 
         self.postman = self.getPostmanFromSettings(self._transcript)
-        await self.postman.configure()
+        await self.postman.connect()
+
+        if self.client_type in [ClientType.PROVIDER, ClientType.HOST]:
+            logger.warn("We are connected as a Host")
+            self._entertainer = self.getEntertainerFromSettings(self._transcript)
+            await self._entertainer.connect()
+
+        if self.client_type == ClientType.PROVIDER:
+            logger.warn("We are connected as a Provider")
+            self._provider = self.getProviderFromSettings(self._transcript)
+            await self._provider.connect()
+
+
 
     async def disconnect_async(self, client_type=None):
-        await self.postman.disconnect()
+        await self.main_ward.disconnect()
+
+        if self.postman: await self.postman.disconnect()
+        if self._provider: await self._provider.disconnect()
+        if self._entertainer: await self._entertainer.disconnect()
+
+        wards = self.identifierWardMap.values()
+        for ward in wards:
+            await ward.disconnect()
+
 
     def negotiate(self, client_type = None):
         self.loop.run_until_complete(self.negotiate_async())
+
+
+    def getUser(self) -> User:
+        return self.auth.getUser()
+
+
+    def getExtensions(self, service):
+        assert service in self._transcript.extensions, "This Service doesnt register Extensions on Negotiate"
+        assert self._transcript.extensions[service] is not None, "There are no extensions registered for this Service and this App (see negotiate)"
+        return self._transcript.extensions[service]
+    
         
     def getWard(self) -> BaseWard:
         return self.main_ward
@@ -196,6 +286,31 @@ class BaseBergen:
 
 
     async def __aexit__(self,*args, **kwargs):
+        print("Running Here")
         await self.disconnect_async()
 
+    
+    @property
+    def provider(self):
+        if self._provider:
+            return self._provider
+        else:
+            raise Exception("We are not in Provider mode")
+
+    @property
+    def entertainer(self):
+        if self._entertainer:
+            return self._entertainer
+        else:
+            raise Exception("We are not in Enterainer mode")
+
+
+    def enable(self, *args, **kwargs):
+        if self._provider:
+            return self.provider.enable(*args, **kwargs)
+        else:
+            raise Exception("We are not in Provider Mode")
+
+    def provide(self):
+        return self.provider.provide()
 

@@ -1,4 +1,5 @@
 
+from bergen.auths.types import HerreConfig
 from oauthlib.oauth2.rfc6749.errors import InvalidClientError
 from bergen.auths.base import AuthError, BaseAuthBackend
 from oauthlib.oauth2.rfc6749.clients.backend_application import BackendApplicationClient
@@ -13,17 +14,10 @@ logger = logging.getLogger(__name__)
 class ArnheimBackendOauth(BaseAuthBackend):
     failedTries = 5
     auto_retry = True
-    tokenurl_appendix = "o/token/"
 
 
-    def __init__(self, host: str, port: int, client_id: str, client_secret: str, protocol="http", verify=True, **kwargs) -> None:
-        super().__init__(host, port, protocol=protocol, **kwargs)
-        self.client_id = client_id
-        self.client_secret = client_secret
-        self.protocol = protocol
-        self.verify = verify
-        self.base_url = f"{protocol}://{host}:{port}"       
-        self.token_url = self.base_url + "/" + self.tokenurl_appendix
+    def __init__(self, config: HerreConfig, **kwargs) -> None:
+        super().__init__(config , **kwargs)  
 
     def fetchToken(self, loop=None) -> str:
         # Connecting
@@ -35,9 +29,10 @@ class ArnheimBackendOauth(BaseAuthBackend):
 
         def fetch_token(thetry=0):
             try:
-
+                
                 token = oauth_session.fetch_token(token_url=self.token_url, client_id=self.client_id,
-                client_secret=self.client_secret, verify=self.verify)
+                client_secret=self.client_secret, verify=True)
+
 
                 if "access_token" not in token:
                     raise Exception("No access token Provided")
@@ -48,15 +43,6 @@ class ArnheimBackendOauth(BaseAuthBackend):
             except Exception as e:
                 if thetry == self.failedTries or not self.auto_retry: raise AuthError(f"Cannot connect to Arnheim instance on {self.token_url}: {e}")
                 logger.error(f"Couldn't connect to the Arnheim Instance at {self.token_url}. Retrying in 2 Seconds")
-                time.sleep(2)
                 return fetch_token(thetry=thetry + 1)
       
         return fetch_token()
-
-
-    def getClientType(self) -> ClientType:
-        return ClientType.EXTERNAL.value
-
-
-    def getProtocol(self):
-        return self.protocol

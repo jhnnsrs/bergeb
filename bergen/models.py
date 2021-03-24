@@ -1,7 +1,6 @@
 from bergen.extenders.pod import PodExtender
 from bergen.types.model import ArnheimModelManager
 from bergen.extenders.user import UserExtender
-from bergen.types.node.inputs import Inputs, Outputs
 from bergen.queries.delayed.node import CREATE_NODE_MUTATION, NODE_FILTER_QUERY, NODE_QUERY, UPDATE_OR_CREATE_NODE
 from bergen.queries.delayed.pod import POD_QUERY
 from bergen.extenders.node import NodeExtender
@@ -19,19 +18,7 @@ except ImportError:
 Node = ForwardRef('Node')
 
 class NodeManager(ArnheimModelManager[Node]):
-
-    def get_or_create(self, inputs: Type[Inputs] = None, outputs: Type[Outputs] = None , **kwargs) -> Node:
-        
-        parsed_inputs = inputs.serialized
-        parsed_outputs = outputs.serialized
-        
-        node = CREATE_NODE_MUTATION(self.model).run(variables={
-            "inputs" : parsed_inputs,
-            "outputs": parsed_outputs,
-            **kwargs
-
-        })
-        return node
+    pass
 
 
 class Node(NodeExtender, SchemaNode):

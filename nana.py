@@ -1,30 +1,62 @@
-from typing import TypedDict
-from bergen.clients.host import HostBergen
+from bergen.provider.base import OneExlusivePodPolicy
+from typing import Tuple
+from bergen.clients.provider import ProviderBergen
+import asyncio
 
-
-client = HostBergen(
-        host="p-tnagerl-lab1",
-        port=8090,
-        client_id="DSNwVKbSmvKuIUln36FmpWNVE2KrbS2oRX0ke8PJ", 
-        client_secret="Gp3VldiWUmHgKkIxZjL2aEjVmNwnSyIGHWbQJo6bWMDoIUlBqvUyoGWUWAe6jI3KRXDOsD13gkYVCZR0po1BLFO9QT4lktKODHDs0GyyJEzmIjkpEOItfdCC4zIa3Qzu",
-        name="imagej",
-        force_sync=True,
+client = ProviderBergen(
+        name="sasa",
         auto_reconnect=True# if we want to specifically only use pods on this innstance we would use that it in the selector
 )
 
 
+@client.enable(gpu=True, 
+    policy=OneExlusivePodPolicy(),
+    auto_provide=True,
+    on_provide=lambda x: print("On Provide")
+)
+async def timer(helper, interval: int = 5) -> int:
+    """Timer Timer
 
-@client.enable(gpu=True)
-def sobelFilter(helper, sigma: int, file_path: int) -> TypedDict("", sigma=int):
-    """Sobel Filter
+    Timer timer does what is wnats
 
-    Sobel filter filters an image with a sobel filter
+    Args:
+        helper ([type]): [description]
+        interval (int, optional): The Interval in seconds. Defaults to 5.
+
+    Returns:
+        int: The Passed Time in seconds
+
     """
-    print("logici")
+    
+    number = 0
+    while True:
+        asyncio.sleep(interval)
+        yield number
+        number += 1
 
-    return { "sigma": 5}
+
+    
+@client.enable(gpu=True, 
+    auto_provide=True,
+    on_provide=lambda x: print("On Provide")
+)
+async def adder(helper, x: int, y: int) -> int:
+    """Adder
+
+    Adds x + y
+
+    Args:
+        helper ([type]): [description]
+        x (int): Input X
+        y (int): Input Y
+
+    Returns:
+        int: X + Y
+    """
+    print("Hallo0")
+    
+    return x + y
 
 
 
-
-client.run()
+client.provide()

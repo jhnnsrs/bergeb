@@ -1,10 +1,9 @@
 from abc import abstractmethod
-from urllib.parse import non_hierarchical
+from bergen.auths.types import HerreConfig
 
 from oauthlib.oauth2.rfc6749.clients.mobile_application import MobileApplicationClient
 from requests_oauthlib.oauth2_session import OAuth2Session
-from bergen.auths.base import AuthError, BaseAuthBackend
-from bergen.enums import ClientType
+from bergen.auths.base import BaseAuthBackend
 import logging
 
 logger = logging.getLogger(__name__)
@@ -22,30 +21,18 @@ except Exception as e:
 class ImplicitApplication(BaseAuthBackend):
 
 
-    def __init__(self, client_id = None, redirect_uri = "http://localhost:3000/callback", host="localhost", port= 8000, protocol = "http", scopes= ["read"], parent=None, **kwargs) -> None:
-        self.client_id = client_id
-        assert self.client_id is not None, "Please provide a client_id argument"
+    def __init__(self, config: HerreConfig, parent=None, **kwargs) -> None:
+        super().__init__(config , **kwargs)  
         # TESTED, just redirecting to Google works in normal browsers
         # the token string appears in the url of the address bar
-        self.redirect_uri = redirect_uri
-
-        # Generate correct URLs
-        self.base_url = f"{protocol}://{host}:{port}/"
-        self.auth_url = self.base_url + "o/authorize"
-        self.token_url = self.base_url + "o/token"
-
+        self.redirect_uri = config.redirect_uri
+        assert self.redirect_uri is not None, "If you want to use the implicit flow please specifiy a redirect Uri"
         # If you want to have a hosting QtWidget
         self.parent = parent
 
-        self.token = None
-
-
-
-        super().__init__(host, port, protocol=protocol, scopes=scopes, **kwargs)
 
     def fetchToken(self, loop=None) -> str:
         
-
         self.mobile_app_client = MobileApplicationClient(self.client_id, scope=self.scope)
 
         # Create an OAuth2 session for the OSF
@@ -64,9 +51,3 @@ class ImplicitApplication(BaseAuthBackend):
             raise NotImplementedError("It appears that you have not Installed PyQt5")
         # We actually get a fully fledged thing back
 
-
-    def getClientType(self):
-        return ClientType.EXTERNAL
-
-    def getProtocol(self):
-        return "http"

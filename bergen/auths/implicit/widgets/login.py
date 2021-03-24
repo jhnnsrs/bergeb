@@ -13,8 +13,6 @@ class LoginWindow(QWebEngineView):
         self.session = backend.session
         self.backend = backend
 
-
-
         auth_url, state = self.session.authorization_url(self.backend.auth_url)
         print("Generated authorization url: {}".format(auth_url))
 
@@ -57,7 +55,6 @@ class LoginDialog(QDialog):
     def tokenReady(self, token):
         self.token = token
         self.accept()
-
 
     # static method to create the dialog and return (date, time, accepted)
     @staticmethod

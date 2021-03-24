@@ -17,7 +17,7 @@ class DataPointRegistry(object):
         self.pointNameWardMap: Dict[str, BaseWard] = {}
         self.builders =  {
                 # Default Builders for standard
-                DataPointType.GRAPHQL: lambda datapoint, bergen: AIOHttpGraphQLWard(host=datapoint.outward, port=datapoint.port, token=bergen.auth.getToken(), protocol=bergen.auth.getProtocol(), loop=bergen.loop)
+                DataPointType.GRAPHQL: lambda datapoint, bergen: AIOHttpGraphQLWard(host=datapoint.outward, port=datapoint.port, token=bergen.auth.getToken(), protocol="http", loop=bergen.loop)
         }
 
     def registerClientBuilder(self, type:str , builder: Callable):

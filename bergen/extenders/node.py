@@ -1,4 +1,7 @@
 
+import asyncio
+from bergen.messages.exception import ExceptionMessage
+from bergen.messages.postman.reserve.reserve_critical import ReserveCriticalMessage
 from typing import Any
 from bergen.schema import AssignationParams, Pod, PodStatus, ProvisionParams
 from bergen.registries.arnheim import get_current_arnheim
@@ -6,10 +9,12 @@ from bergen.types.model import ArnheimModel
 from bergen.extenders.base import BaseExtender
 from aiostream import stream
 from bergen.extenders.contexts.pod import HostedPod
+from bergen.messages.postman.reserve import ReserveDoneMessage
 from tqdm import tqdm
 import textwrap
+import logging
 
-
+logger = logging.getLogger(__name__)
 
 class AssignationUIMixin:
 
@@ -38,11 +43,147 @@ class AssignationUIMixin:
         
 
 
+class ProvideContext:
 
 
+    def __init__(self, node, on_progress=None, **params) -> None:
+        bergen = get_current_arnheim()
+
+        self._postman = bergen.getPostman()
+        self.node = node
+        self.on_progress = on_progress
+        self.params = ProvisionParams(**params)
+        pass
+
+
+    async def assign(self, *args, **kwargs):
+        return await self._postman.assign(pod=self.pod, node=self.node, args=args, kwargs=kwargs, on_progress=self.on_progress)
+
+
+    async def unprovide(self):
+        return await self._postman.unprovide(pod=self.pod, on_progress=self.on_progress)
+
+    async def provide(self):
+        return await self._postman.provide(node=self.node, params=self.params, on_progress=self.on_progress)
+
+    async def __aenter__(self):
+        logger.info(f"Providing this node {self.node} with {self.params}")
+        self.pod = await self.provide()
+        logger.warn(f"Provided Listener on {self.pod.channel}")
+        return self
+
+    async def __aexit__(self, *args, **kwargs):
+        await self.unprovide()
+
+
+class ReserveContext:
+
+
+    def __init__(self, node, on_progress=None, **params) -> None:
+        bergen = get_current_arnheim()
+        self._postman = bergen.getPostman()
+
+        self.node = node
+        self.on_progress = on_progress
+        self.params = ProvisionParams(**params)
+        pass
+
+
+    async def assign(self, *args, **kwargs):
+        return await self._postman.assign(reservation=self.reservation, node=self.node, args=args, kwargs=kwargs, on_progress=self.on_progress)
+
+    async def unreserve(self):
+        return await self._postman.unreserve(reservation=self.reservation, on_progress=self.on_progress)
+
+    async def reserve(self):
+        return await self._postman.reserve(node=self.node, params=self.params, on_progress=self.on_progress)
+
+    async def __aenter__(self):
+        logger.info(f"Reserving this node {self.node} with {self.params}")
+        self.reservation, self.pod_channel = await self.reserve()
+        logger.warn(f"Recevied reservation {self.reservation} on channel {self.pod_channel}")
+        return self
+
+    async def __aexit__(self, *args, **kwargs):
+        await self.unreserve()
+
+
+class Reservation:
+
+
+    def __init__(self, node, on_progress=None, loop=None, **params) -> None:
+        bergen = get_current_arnheim()
+        self._postman = bergen.getPostman()
+
+        self.node = node
+        self.on_progress = on_progress
+        self.params = ProvisionParams(**params)
+
+        self.loop = loop or asyncio.get_event_loop()
+        # Status
+        self.running = False
+        self.critical_error = None
+        self.recovering = False #TODO: Implement
+
+        pass
+
+
+    async def assign(self, *args, **kwargs):
+        assert not self.critical_error, "Contract was broken because pod is critically errored. All requests will be cancelled"
+        return await self._postman.assign(reservation=self.reservation, node=self.node, args=args, kwargs=kwargs, on_progress=self.on_progress)
+
+    def stream(self, *args, **kwargs):
+        assert not self.critical_error, "Contract was broken because pod is critically errored. All requests will be cancelled"
+        return self._postman.stream(reservation=self.reservation, node=self.node, args=args, kwargs=kwargs, on_progress=self.on_progress)
+
+    async def unreserve(self):
+        return await self._postman.unreserve(reservation=self.reservation, on_progress=self.on_progress)
+
+    async def contract_worker(self):
+        self.running = True
+        async for message in self._postman.reserve_stream(node=self.node, params=self.params, on_progress=self.on_progress):
+
+            if isinstance(message, ExceptionMessage):
+                self.contract_started.set_exception(message.toException())
+                return
+
+            if isinstance(message, ReserveDoneMessage):
+                print(message)
+                self.contract_started.set_result((message.meta.reference, message.data.channel))
+
+            if isinstance(message, ReserveCriticalMessage):
+                self.critical_error = message
+
+
+    def cancel_reservation(self, future):
+        logger.info("Cancelled Reservation")
+
+    async def __aenter__(self):
+        logger.info(f"Reserving this node {self.node} with {self.params}")
+
+        self.contract_started = self.loop.create_future()
+        self.worker_task = self.loop.create_task(self.contract_worker())
+        self.worker_task.add_done_callback(self.cancel_reservation)
+        try:
+            self.reservation, self.channel = await self.contract_started
+            logger.warn(f"Recevied reservation {self.reservation} on channel {self.channel}")
+        except Exception as e :
+            await self.__aexit__()
+            raise e
+        return self
+
+    async def __aexit__(self, *args, **kwargs):
+        if not self.worker_task.done():
+            #await self._postman.unreserve(reservation=self.reservation, on_progress=self.on_progress)
+            self.worker_task.cancel()
+            try:
+                await self.worker_task
+            except asyncio.CancelledError:
+                logger.info("Reservation over")
+
+        
 
 class NodeExtender(AssignationUIMixin, BaseExtender):
-
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args,**kwargs)
@@ -53,12 +194,11 @@ class NodeExtender(AssignationUIMixin, BaseExtender):
         self._loop, self._force_sync = bergen.getLoopAndContext()
 
 
-    def provide(self, params: ProvisionParams, **kwargs):
-        if self._loop.is_running() and not self._force_sync:
-            return self.provide_async(params, **kwargs)
-        else:
-            result = self._loop.run_until_complete(self.provide_async(params, **kwargs))
-            return result
+    def provide(self, **params) -> ProvideContext:
+        return ProvideContext(self, **params)
+
+    def reserve(self, **params) -> Reservation:
+        return Reservation(self, **params)
 
     async def provide_async(self, params: ProvisionParams, **kwargs):
         return await self._postman.provide(self, params, **kwargs)       

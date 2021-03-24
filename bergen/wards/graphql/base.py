@@ -39,7 +39,7 @@ class BaseGraphQLWard(BaseWard, ABC):
             query_node = gql(the_query.query)
             response = self.sync_transport.execute(query_node, variable_values=variables)
             if response.errors:
-                raise GraphQLException(str(response.errors))
+                raise GraphQLException(f"Error: {self._graphql_endpoint} {str(response.errors)}")
             return the_query.extract(response.data)
 
         else:

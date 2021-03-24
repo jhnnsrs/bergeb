@@ -1,12 +1,13 @@
 
+from bergen.queries.delayed.node import DETAIL_NODE_FR
 from bergen.schema import Assignation, Node, Peasent, Template, Pod, Provision, Transcript, VartPod, Volunteer
 from bergen.query import TypedGQL
 
 
 NEGOTIATION_GQL = TypedGQL("""
 
-  mutation Negotiate($clientType: ClientTypeInput!) {
-  negotiate(clientType: $clientType) {
+  mutation Negotiate($clientType: ClientTypeInput!, $name: String) {
+  negotiate(clientType: $clientType, name: $name) {
     timestamp
     extensions
     models {
@@ -18,6 +19,14 @@ NEGOTIATION_GQL = TypedGQL("""
         }
     }
     postman {
+        type
+        kwargs
+    }
+    provider {
+        type
+        kwargs
+    }
+    host {
         type
         kwargs
     }
@@ -41,21 +50,26 @@ SERVE_GQL = TypedGQL("""
 
 
 OFFER_GQL = TypedGQL("""
-    mutation Offer($node: ID!, $params: GenericScalar!){
-        offer(node: $node, params: $params){
+    mutation Offer($node: ID!, $params: GenericScalar!, $policy: GenericScalar!){
+        offer(node: $node, params: $params, policy: $policy){
             id
-            name 
+            name
+            policy 
         }
     }
 """, Template)
 
 
 ACCEPT_GQL = TypedGQL("""
-    mutation Accept($template: ID!){
-        accept(template: $template){
+    mutation Accept($template: ID!, $provision: String!){
+        accept(template: $template, provision: $provision){
             id
             template {
-                channel
+                node {"""
+                + DETAIL_NODE_FR +
+                """
+
+                }
             }
         }
     }

@@ -1,7 +1,7 @@
-from bergen.enums import PostmanProtocol
+from bergen.enums import HostProtocol, PostmanProtocol, ProviderProtocol
 from bergen.queries.delayed.pod import POD_QUERY
 from bergen.queries.delayed.template import TEMPLATE_GET_QUERY
-from bergen.extenders.port import PortExtender
+from bergen.extenders.port import ArgPortExtender, KwargPortExtender, ReturnPortExtender
 from bergen.types.object import ArnheimObject
 from bergen.types.model import ArnheimModel
 from enum import Enum
@@ -65,10 +65,19 @@ class PostmanSettings(ArnheimObject):
     type: Optional[PostmanProtocol]
     kwargs: Optional[dict]
 
+class ProviderSettings(ArnheimObject):
+    type: Optional[ProviderProtocol]
+    kwargs: Optional[dict]
+
+class EntertainerSettings(ArnheimObject):
+    type: Optional[HostProtocol]
+    kwargs: Optional[dict]
 
 class Transcript(ArnheimObject):
     extensions: Optional[Any]
     postman: Optional[PostmanSettings]
+    host: Optional[EntertainerSettings]
+    provider: Optional[ProviderSettings]
     models: Optional[List[DataModel]]
 
 
@@ -84,7 +93,16 @@ class Widget(ArnheimObject):
     dependencies: Optional[List[str]]
 
 
-class Port(PortExtender, ArnheimObject):
+class ArgPort(ArgPortExtender, ArnheimObject):
+    __slots__ = ("_widget", )
+
+    required: Optional[bool]
+    key: Optional[str]
+    identifier: Optional[str] 
+    label: Optional[str]
+    widget: Optional[Widget]
+
+class KwargPort(KwargPortExtender, ArnheimObject):
     __slots__ = ("_widget", )
 
     required: Optional[bool]
@@ -94,18 +112,32 @@ class Port(PortExtender, ArnheimObject):
     default: Optional[Any]
     widget: Optional[Widget]
 
+class ReturnPort(ReturnPortExtender, ArnheimObject):
+    __slots__ = ("_widget", )
+
+    required: Optional[bool]
+    key: Optional[str]
+    identifier: Optional[str] 
+    label: Optional[str]
+
+
+class NodeType(str, Enum):
+    FUNCTION = "FUNCTION"
+    GENERATOR = "GENERATOR"
+
 
 class Node(ArnheimModel):
     id: Optional[int]
     name: Optional[str]
     package: Optional[str]
-    inputs: Optional[List[Port]]
-    outputs: Optional[List[Port]]
+    args: Optional[List[ArgPort]]
+    kwargs: Optional[List[KwargPort]]
+    returns: Optional[List[ReturnPort]]
+    type: Optional[NodeType]
 
 
     class Meta:
         identifier = "node"
-
 
 
 class ArnheimApplication(ArnheimModel):
@@ -181,8 +213,7 @@ class AssignationStatus(str, Enum):
 class ProvisionStatus(str, Enum):
     ERROR = "ERROR"
     PROGRESS = "PROGRESS"
-    DEBUG = "DEBUG"
-    ASSIGNED = "ASSIGNED"
+    DONE = "DONE"
     CRITICAL ="CRITICAL"
     PENDING = "PENDING"
 
