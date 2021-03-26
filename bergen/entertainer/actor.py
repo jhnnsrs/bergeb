@@ -62,7 +62,7 @@ class Actor:
         self.assignments = {}
         pass
 
-    async def reserve(self):
+    async def on_provide(self):
         pass
 
     def check_if_assignation_cancelled(self, assign, future):
@@ -71,8 +71,8 @@ class Actor:
     async def run(self):
         ''' An infinitie loop assigning to itself'''
         try:
-            logger.info(f"Run for {self.__class__.__name__} on Pod {self.pod.id}: Run was Started. Reserving")
-            await self.reserve()
+            logger.info(f"Run for {self.__class__.__name__} on Pod {self.pod.id}: Pod was Provided. Reserving")
+            await self.on_provide()
             logger.info(f"Run for {self.__class__.__name__} on Pod {self.pod.id}: Resources were reservered. Waiting for Tasks until canceled")
             
             while True:
@@ -106,15 +106,15 @@ class Actor:
 
         except asyncio.CancelledError:
             logger.info(f"Run for {self.__class__.__name__} on Pod {self.pod.id}: Received Entertainment Cancellation. Unreserving")
-            await self.unreserve()
-            logger.info(f"Run for {self.__class__.__name__} on Pod {self.pod.id}: Unreserved. Ciao!")
+            await self.on_unprovide()
+            logger.info(f"Run for {self.__class__.__name__} on Pod {self.pod.id}: Unprovided. Ciao!")
             raise
 
         except Exception as e:
             logger.error(e)
             raise e
 
-    async def unreserve(self):
+    async def on_unprovide(self):
         pass
 
     async def progress(self, value, percentage):

@@ -84,7 +84,6 @@ async def shrinkInputs(node: Node, args: List, kwargs: List) -> Tuple[dict, dict
     #assert node.inputs is not None, "Your Query for Nodes seems to not provide any field for inputs, please use that in your get statement"
     #assert len(node.inputs) > 0  is not None, "Your Node seems to not provide any inputs, calling is redundant"
 
-    logger.info("Here")
     shrinked_args = {}
     for arg, port in zip(args, node.args):
         if port.TYPENAME == TYPENAMES.MODELPORTTYPE:
@@ -111,8 +110,6 @@ async def shrinkInputs(node: Node, args: List, kwargs: List) -> Tuple[dict, dict
         else:
             shrinked_kwargs[port.key] = kwargs[port.key]
     
-    logger.info("There")
-    print(shrinked_args, shrinked_kwargs)
     return shrinked_args, shrinked_kwargs
 
 

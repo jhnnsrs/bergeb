@@ -286,7 +286,6 @@ class BaseBergen:
 
 
     async def __aexit__(self,*args, **kwargs):
-        print("Running Here")
         await self.disconnect_async()
 
     

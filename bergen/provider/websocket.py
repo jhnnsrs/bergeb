@@ -23,6 +23,7 @@ logger = logging.getLogger()
 
 
 
+DEBUG = True
 
 class WebsocketProvider(BaseProvider):
     ''' Is a mixin for Our Bergen '''
@@ -97,6 +98,11 @@ class WebsocketProvider(BaseProvider):
             return_when=asyncio.FIRST_EXCEPTION
         )
 
+        if DEBUG: 
+            for task in done:
+                if task.exception():
+                    raise task.exception()
+                    
         logger.error(f"Provider: Lost connection inbetween everything :( {[ task.exception() for task in done]}")
         logger.error(f'Provider: Reconnecting')
 
@@ -139,6 +145,7 @@ class WebsocketProvider(BaseProvider):
             if isinstance(message, BouncedProvideMessage):
                 logger.info("Received Provide Request")
                 assert message.data.template is not None, "Received Provision that had no Template???"
+
                 pod, task = await self.provideTemplate(message.meta.reference, message.data.template)
                 self.provisions[message.meta.reference] = task # Run in parallel
 

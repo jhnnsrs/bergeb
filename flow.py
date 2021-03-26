@@ -135,8 +135,6 @@ class FuncNode(AsnycNode):
             await self.push(returns)
 
 
-
-
 class GenNode(AsnycNode):
 
     async def run(self):
@@ -161,7 +159,7 @@ class Flow(AsyncGenActor):
         self.return_queue = asyncio.Queue()
 
 
-    async def reserve(self):
+    async def on_provide(self):
         # graph = await Graph.asyncs.get(template=self.pod.template)
         self.graph = await Graph.asyncs.get(id=59)
 
@@ -292,7 +290,7 @@ class Flow(AsyncGenActor):
             action_queue.task_done()
 
 
-    async def unreserve(self):
+    async def on_unprovide(self):
         logger.warning("Gently deleting our reservations")
         self.reservations = await asyncio.gather(*[res.__aexit__() for res in self.reservations])
         logger.warning("UNreserved")
@@ -305,18 +303,19 @@ class Flow(AsyncGenActor):
 async def main():
 
     async with ProviderBergen(
-        name="KAAARL",
+        config_path="fluss.yaml",
+        name="Fluss",
         auto_reconnect=True# if we want to specifically only use pods on this innstance we would use that it in the selector
     ):
 
 
         acting = Flow(None, None)
-        await acting.reserve()
+        await acting.on_provide()
 
         async for i in acting.assign(timer=5):
             logger.info(f"Yielding {i}")
 
-        await acting.unreserve()
+        await acting.on_unprovide()
 
 
 

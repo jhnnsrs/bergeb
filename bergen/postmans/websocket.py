@@ -96,7 +96,6 @@ class WebsocketPostman(BasePostman):
     async def disconnect(self):
 
         for task in self.pending:
-            print(task)
             task.cancel()
 
         if self.connection: await self.connection.close()
@@ -179,10 +178,11 @@ class WebsocketPostman(BasePostman):
     async def callbacks(self):
         while True:
             message = await self.callback_queue.get()
+            logger.info(f"Received message {message}")
             try:
                 parsed_message = expandToMessage(json.loads(message))
                 correlation_id = parsed_message.meta.reference
-                assert correlation_id in self.futures or correlation_id in self.streams , "Received Message that wasn't originaing from our futures or streams"
+                assert correlation_id in self.futures or correlation_id in self.streams , f"Received Message that wasn't originaing from our futures or streams {correlation_id}"
                
                 # Stream Path
 
@@ -269,9 +269,9 @@ class WebsocketPostman(BasePostman):
 
 
     async def stream(self, node: Node = None, pod: Pod = None, reservation: str = None, args = None, kwargs = None, params= None, on_progress: Callable = None):
-        logger.info(f"Creating a Stream")
+        
         reference = str(uuid.uuid4())
-
+        logger.info(f"Creating a Stream {reference}")
         self.streams[reference] = asyncio.Queue()
 
         with_progress = False
@@ -504,8 +504,8 @@ class WebsocketPostman(BasePostman):
 
 
     async def reserve_stream(self, node: Node = None, template: Template = None , params= None, on_progress: Callable = None):
-        logger.info(f"Creating a Reservation Stream")
         reference = str(uuid.uuid4())
+        logger.info(f"Creating a Reservation Stream {reference}")
 
         self.streams[reference] = asyncio.Queue()
 

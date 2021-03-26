@@ -13,9 +13,9 @@ logger = logging.getLogger(__name__)
 
 
 def createNodeFromActor(actor,*args, **kwargs):
-    return createNodeFromFunction(actor.assign, *args, **kwargs)
+    return createNodeFromFunction(actor.assign, *args, interface=actor.__name__.lower())
 
-def createNodeFromFunction(function: Callable, package: str, widgets: dict = {}, allow_empty_doc=False):
+def createNodeFromFunction(function: Callable, package: str, widgets: dict = {}, allow_empty_doc=False, interface=None):
     is_generator = inspect.isasyncgenfunction(function) or inspect.isgenerator(function)
     logger.info(f"Node is {'Generator' if is_generator else 'Function'}")
 
@@ -27,7 +27,6 @@ def createNodeFromFunction(function: Callable, package: str, widgets: dict = {},
     kwargs = []
     function_inputs = sig.parameters
     for key, value in function_inputs.items():
-        print(key, value)
         widget = widgets.get(key, None)
         the_class = value.annotation
 
@@ -71,7 +70,7 @@ def createNodeFromFunction(function: Callable, package: str, widgets: dict = {},
         logger.warn(f"Allowing empty Documentatoin. Please consider providing a documentation for function {function.__name__}")
 
 
-    name = docstring.short_description or function.__name__
+    name = interface or docstring.short_description or function.__name__
     description = docstring.long_description or "No Description"
 
     doc_param_map = {param.arg_name: {
@@ -106,7 +105,7 @@ def createNodeFromFunction(function: Callable, package: str, widgets: dict = {},
     return Node.objects.update_or_create(
         name = name,
         package = package,
-        interface = function.__name__,
+        interface = interface or function.__name__,
         description = description,
         args = [arg.serialize() for arg in args],
         kwargs = [kwarg.serialize() for kwarg in kwargs],

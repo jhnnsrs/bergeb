@@ -10,15 +10,15 @@ import asyncio
 async def main():
 
     async with Bergen(name="karl"):
-        zeries = await Node.asyncs.get(package="sasa", interface="assign")
-
-        await zeries.provide().provide()
+        zeries = await Node.asyncs.get(package="ImageJ", interface="newadder")
 
         async with zeries.reserve(room="sted", on_progress= lambda x: print(x)) as res:
-            lala = await asyncio.gather(*[res.assign(100,200,z=0) for i in range(1000)])
+            lala = await asyncio.gather(*[res.assign(100,200,z=0) for i in range(100)])
             print(lala)
 
-        print(zeries)
+            await asyncio.sleep(5)
+            kaka = await res.assign(100,200,z=2)
+            print(kaka)
 
 
             

@@ -29,7 +29,7 @@ if __name__ == "__main__":
 
     app = QApplication([])
 
-    node = Node.objects.get(package="basic", interface="sleep")
+    node = Node.objects.get(package="Adding Friend", interface="newadder")
     inputs = node.askInputs()
 
     x = node(inputs, with_progress=True)

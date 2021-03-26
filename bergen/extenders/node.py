@@ -1,5 +1,6 @@
 
 import asyncio
+from asyncio.futures import Future
 from bergen.messages.exception import ExceptionMessage
 from bergen.messages.postman.reserve.reserve_critical import ReserveCriticalMessage
 from typing import Any
@@ -129,11 +130,11 @@ class Reservation:
 
 
     async def assign(self, *args, **kwargs):
-        assert not self.critical_error, "Contract was broken because pod is critically errored. All requests will be cancelled"
+        assert self.critical_error is None, f"Contract was broken because pod is critically errored. All requests will be cancelled {self.critical_error}"
         return await self._postman.assign(reservation=self.reservation, node=self.node, args=args, kwargs=kwargs, on_progress=self.on_progress)
 
     def stream(self, *args, **kwargs):
-        assert not self.critical_error, "Contract was broken because pod is critically errored. All requests will be cancelled"
+        assert self.critical_error is None, f"Contract was broken because pod is critically errored. All requests will be cancelled {self.critical_error}"
         return self._postman.stream(reservation=self.reservation, node=self.node, args=args, kwargs=kwargs, on_progress=self.on_progress)
 
     async def unreserve(self):
@@ -143,20 +144,33 @@ class Reservation:
         self.running = True
         async for message in self._postman.reserve_stream(node=self.node, params=self.params, on_progress=self.on_progress):
 
-            if isinstance(message, ExceptionMessage):
+            # Before here because Reserve Critical is actually an ExceptionMessage
+            #TODO: Undo this
+            if isinstance(message, ReserveCriticalMessage):
+                logger.error(f"Reservation was stopped with a Critical Error {message.data.message}")
+                self.critical_error = message
+
+            elif isinstance(message, ExceptionMessage):
                 self.contract_started.set_exception(message.toException())
                 return
 
-            if isinstance(message, ReserveDoneMessage):
-                print(message)
+            elif isinstance(message, ReserveDoneMessage):
                 self.contract_started.set_result((message.meta.reference, message.data.channel))
 
-            if isinstance(message, ReserveCriticalMessage):
-                self.critical_error = message
+            
 
 
-    def cancel_reservation(self, future):
-        logger.info("Cancelled Reservation")
+    def cancel_reservation(self, future: Future):
+        if future.cancelled():
+            logger.info("We have finished with our reservation now. Bye bye Pod")
+            return
+        elif future.exception():
+            logger.info("We terminated with an Error")
+            raise future.exception()
+        elif future.done():
+            logger.error("We finished which is weird!")
+            return
+
 
     async def __aenter__(self):
         logger.info(f"Reserving this node {self.node} with {self.params}")
@@ -164,12 +178,8 @@ class Reservation:
         self.contract_started = self.loop.create_future()
         self.worker_task = self.loop.create_task(self.contract_worker())
         self.worker_task.add_done_callback(self.cancel_reservation)
-        try:
-            self.reservation, self.channel = await self.contract_started
-            logger.warn(f"Recevied reservation {self.reservation} on channel {self.channel}")
-        except Exception as e :
-            await self.__aexit__()
-            raise e
+        self.reservation, self.channel = await self.contract_started
+        logger.warn(f"Recevied reservation {self.reservation} on channel {self.channel}")
         return self
 
     async def __aexit__(self, *args, **kwargs):

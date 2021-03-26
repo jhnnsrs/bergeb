@@ -246,7 +246,7 @@ class BaseProvider:
             
         actor = self.template_actorClass_map[template_id]
         pod = await ACCEPT_GQL.run_async(ward=self.client.main_ward, variables= {"template": template_id, "provision": reference})
-        print(f"Created {pod}")
+        logger.warn(f"Created {pod}")
         await self.client.entertainer.entertain(pod, actor)
         return pod
 

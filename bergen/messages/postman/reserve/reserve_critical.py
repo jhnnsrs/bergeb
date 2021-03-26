@@ -1,3 +1,4 @@
+from ....messages.exception import ExceptionMessage
 from pydantic.main import BaseModel
 from ....messages.types import  PROVIDE, PROVIDE_CRITICAL, PROVIDE_DONE, RESERVE_CRITICAL
 from ....messages.base import MessageDataModel, MessageMetaExtensionsModel, MessageMetaModel, MessageModel
@@ -13,9 +14,5 @@ class MetaModel(MessageMetaModel):
     type: str = RESERVE_CRITICAL
     extensions: Optional[MetaExtensionsModel]
 
-class DataModel(MessageDataModel):
-    channel: Optional[str] #TODO: Maybe not optional
-
-class ReserveCriticalMessage(MessageModel):
-    data: DataModel
+class ReserveCriticalMessage(ExceptionMessage):
     meta: MetaModel
