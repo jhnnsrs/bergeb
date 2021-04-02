@@ -9,22 +9,20 @@ import asyncio
 
 async def main():
 
-    async with Bergen(name="karl"):
-        zeries = await Node.asyncs.get(package="ImageJ", interface="newadder")
+    async with Bergen(name="karl",config_path="tests/configs/implicit.yaml",force_new_token=True):
+        zeries = await Node.asyncs.get(package="fluss", interface="sloppy-cerulean-moose")
 
         async with zeries.reserve(room="sted", on_progress= lambda x: print(x)) as res:
-            lala = await asyncio.gather(*[res.assign(100,200,z=0) for i in range(100)])
+            lala = await asyncio.gather(*[res.assign(100,200,z=0) for i in range(1)])
             print(lala)
-
-            await asyncio.sleep(5)
-            kaka = await res.assign(100,200,z=2)
-            print(kaka)
 
 
             
 
 
 if __name__ == "__main__":
+
+
         loop = asyncio.get_event_loop()
         loop.run_until_complete(main())
         loop.close()

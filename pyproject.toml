@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "bergen"
-version = "0.3.59"
+version = "0.3.65"
 readme = "README.md"
 homepage = "https://github.com/jhnnsrs/bergen"
 description = "A python client for the Arnheim Framework"

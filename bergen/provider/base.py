@@ -2,6 +2,9 @@
 
 from abc import ABC, abstractmethod
 from asyncio.events import AbstractEventLoop
+from bergen.clients.base import BaseBergen
+from bergen.messages.base import MessageModel
+from bergen.hookable.base import Hookable, hookable
 from bergen.entertainer.actor import Actor, AsyncFuncActor, AsyncGenActor, ThreadedFuncActor
 from bergen.messages.postman.assign.assign import AssignMessage
 from bergen.provider.utils import createNodeFromActor, createNodeFromFunction
@@ -27,7 +30,7 @@ import copy
 import json
 from bergen.types.model import ArnheimModel
 import uuid
-
+from bergen.messages.postman.provide import BouncedProvideMessage, ProvideProgressMessage, BouncedCancelProvideMessage
 
 
 class BaseHelper(ABC):
@@ -148,12 +151,13 @@ def isactor(type):
 
 
 
-class BaseProvider:
+class BaseProvider(Hookable):
     ''' Is a mixin for Our Bergen '''
     helperClass = None
 
 
-    def __init__(self, *args, name = None, provider: int = None, loop=None, client=None) -> None:
+    def __init__(self, *args, name = None, provider: int = None, loop=None, client: BaseBergen =None, **kwargs) -> None:
+        super().__init__(**kwargs)
         assert provider is not None, "Provider was set to none, this is weird!!"
         self.arkitekt_provider = provider
         self.name = name
@@ -240,6 +244,38 @@ class BaseProvider:
     async def disconnect(self) -> str:
         raise NotImplementedError("Please overwrite")
 
+
+    @abstractmethod
+    async def forward(self, message: MessageModel) -> str:
+        raise NotImplementedError("Please overwrite")
+
+
+    @hookable("bounced_provide", overwritable=True)
+    async def on_bounced_provide(self, message: BouncedProvideMessage):
+        pod, task = await self.provideTemplate(message.meta.reference, message.data.template)
+        self.provisions[message.meta.reference] = task # Run in parallel
+
+        progress = ProvideProgressMessage(data={
+            "level": "INFO",
+            "message": f"Pod Pending {pod.id}"
+        }, meta={"extensions": message.meta.extensions, "reference": message.meta.reference})
+
+        await self.forward(progress)
+
+    async def on_bounced_cancel_provide(self, message: BouncedCancelProvideMessage):
+        if message.data.reference in self.tasks: 
+            logger.info("Cancellation for Provision received. Canceling!")
+            provision = self.provisions[message.data.reference]
+            if not provision.done():
+                provision.cancel()
+                #TODO: await self.send_to_connection(progress)
+                logger.warn("Canceled Provision!!")
+
+            #TODO: await self.send_to_connection(progress) if task was already done
+        else:
+            logger.error("Received Cancellation for task that was not in our tasks..")
+
+
     
     async def provideTemplate(self, reference: str, template_id: str):
         assert template_id in self.template_actorClass_map, f"There is no function registered for this template {template_id} not it {self.template_actorClass_map.keys()}"
@@ -252,7 +288,8 @@ class BaseProvider:
 
 
     async def provide_async(self):
-        await self.setup_and_run()
+        while True:
+            await asyncio.sleep(3)
 
     def provide(self):
         if self.loop.is_running():

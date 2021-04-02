@@ -16,7 +16,7 @@ class ModelArgPort(BaseArgPort):
 
       assert widget is not None, "You didn't provide a widget nor has it been declared in the meta class of the Model"
         
-      super().__init__("model", widget, **kwargs)
+      super().__init__(widget, **kwargs)
 
   def serialize(self):
       return {**super().serialize(),"identifier" : self.modelClass.getMeta().identifier}

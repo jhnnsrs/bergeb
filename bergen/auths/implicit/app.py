@@ -1,4 +1,5 @@
 from abc import abstractmethod
+
 from bergen.auths.types import HerreConfig
 
 from oauthlib.oauth2.rfc6749.clients.mobile_application import MobileApplicationClient
@@ -14,7 +15,7 @@ try:
     Dialog = LoginDialog
 
 except Exception as e:
-    logger.debug(e)
+    logger.error(e)
     Dialog = None
 
 
@@ -44,10 +45,21 @@ class ImplicitApplication(BaseAuthBackend):
         )
 
         try:
-            token, result = Dialog.getToken(backend=self, parent=self.parent)
-            return token["access_token"]    
+            from PyQt5 import QtWidgets
+            from bergen.auths.implicit.widgets.login import LoginDialog
 
-        except Exception as e:
-            raise NotImplementedError("It appears that you have not Installed PyQt5")
+            if QtWidgets.QApplication.instance() is None:
+                # if it does not exist then a QApplication is created
+                app = QtWidgets.QApplication([])
+                token, accepted = LoginDialog.getToken(backend=self, parent=self.parent)
+                app.exit()
+
+            else:
+                token, accepted = LoginDialog.getToken(backend=self, parent=self.parent)
+
+            return token
+
+        except ImportError as e:
+            raise Exception("You need to have PyQt5 and PyQtWebEngine installed to use this Authentication flow")
         # We actually get a fully fledged thing back
 

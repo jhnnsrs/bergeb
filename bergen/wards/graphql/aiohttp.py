@@ -31,7 +31,7 @@ class AIOHttpGraphQLWard(BaseGraphQLWard):
 
         response = await self.transport.execute(query_node, variable_values=variables)
         if response.errors:
-            raise GraphQLException(str(response.errors))
+            raise GraphQLException(f"Ward {self._graphql_endpoint}:" + str(response.errors))
         return the_query.extract(response.data)
 
     async def disconnect(self):

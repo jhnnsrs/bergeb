@@ -1,6 +1,8 @@
 import asyncio
 from abc import ABC, abstractmethod
 from asyncio.futures import Future
+from bergen.messages.postman.provide.bounced_provide import BouncedProvideMessage
+from bergen.hookable.base import Hookable
 import logging
 from typing import Dict, Type
 from bergen.models import Pod
@@ -10,11 +12,12 @@ import uuid
 
 logger = logging.getLogger(__name__)
 
-class BaseHost(ABC):
+class BaseHost(Hookable):
     ''' Is a mixin for Our Bergen '''
     helperClass = None
 
-    def __init__(self, raise_exceptions_local=False, client = None, loop=None,**kwargs) -> None:
+    def __init__(self, raise_exceptions_local=False, client = None, loop=None, **kwargs) -> None:
+        super().__init__(**kwargs)
         self.pods = {}
         self.raise_exceptions_local = raise_exceptions_local
         self.loop = loop or asyncio.get_event_loop()
@@ -68,14 +71,17 @@ class BaseHost(ABC):
 
         self.tasks.append(asyncio.create_task(self.deactivatePod(actor.pod)))
 
-    async def entertain(self, pod: Pod, actorClass: Type[Actor]):
+    async def entertain(self, bounced_provide: BouncedProvideMessage, actorClass: Type[Actor]):
         ''' Takes an instance of a pod, asks arnheim to activate it and accepts requests on it,
         cancel this task to unprovide your local implementatoin '''
-        assert pod.id not in self.pod_actor_run_map, "This pod is already entertained"
 
         reference = str(uuid.uuid4())
-        actor = actorClass(pod, self.hostHelper)
-        await self.activatePod(pod, reference)
+        actor = actorClass(bounced_provide, self.hostHelper)
+
+        try:
+            actor.on_provide()
+
+        pod = await self.activatePod(pod, reference)
 
         try:
             self.pod_actor_queue_map[str(pod.id)] = actor.queue

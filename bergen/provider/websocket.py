@@ -1,9 +1,7 @@
 
 
 from abc import ABC, abstractmethod
-from bergen.messages.postman.provide.bounced_cancel_provide import BouncedCancelProvideMessage
-from bergen.messages.postman.provide.provide_progress import ProvideProgressMessage
-from bergen.messages.postman.provide.bounced_provide import BouncedProvideMessage
+from bergen.messages.postman.provide import BouncedProvideMessage, ProvideProgressMessage, BouncedCancelProvideMessage
 from bergen.messages.utils import expandToMessage
 from bergen.messages.base import MessageModel
 from bergen.provider.base import BaseHelper, BaseProvider
@@ -131,6 +129,8 @@ class WebsocketProvider(BaseProvider):
             message = await self.outgoing_queue.get()
             await self.connection.send(message.to_channels())
 
+    async def forward(self, message: MessageModel) -> str:
+        await self.send_to_connection(message)
 
     async def send_to_connection(self, message: MessageModel):
         logger.info(f"Sending {message}")
@@ -145,32 +145,11 @@ class WebsocketProvider(BaseProvider):
             if isinstance(message, BouncedProvideMessage):
                 logger.info("Received Provide Request")
                 assert message.data.template is not None, "Received Provision that had no Template???"
-
-                pod, task = await self.provideTemplate(message.meta.reference, message.data.template)
-                self.provisions[message.meta.reference] = task # Run in parallel
-
-                progress = ProvideProgressMessage(data={
-                    "level": "INFO",
-                    "message": f"Pod Pending {pod.id}"
-                }, meta={"extensions": message.meta.extensions, "reference": message.meta.reference})
-
-                await self.send_to_connection(progress)
-
-
-
+                await self.on_bounced_provide(message)
+                
             elif isinstance(message, BouncedCancelProvideMessage):
-
-                if message.data.reference in self.tasks: 
-                    logger.info("Cancellation for Provision received. Canceling!")
-                    provision = self.provisions[message.data.reference]
-                    if not provision.done():
-                        provision.cancel()
-                        #TODO: await self.send_to_connection(progress)
-                        logger.warn("Canceled Provision!!")
-
-                    #TODO: await self.send_to_connection(progress) if task was already done
-                else:
-                    logger.error("Received Cancellation for task that was not in our tasks..")
+                await self.on_bounced_cancel_provide(message)
+                
 
             else: raise Exception("Received Unknown Task")
             self.incoming_queue.task_done()

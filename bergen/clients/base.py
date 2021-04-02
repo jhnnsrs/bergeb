@@ -1,4 +1,5 @@
 import asyncio
+from bergen.hookable.base import Hookable, Hooks
 from oauthlib.oauth2.rfc6749.clients.base import Client
 
 from pydantic.main import BaseModel
@@ -79,6 +80,7 @@ class BaseBergen:
         self.config = config
         self.name = name
         self.client_type = client_type
+        self.registered_hooks = Hooks()
 
 
         self.token = self.auth.getToken()
@@ -143,7 +145,7 @@ class BaseBergen:
         if settings.type == PostmanProtocol.RABBITMQ:
             try:
                 from bergen.postmans.pika import PikaPostman
-                postman = PikaPostman(**settings.kwargs, loop=self.loop, client=self)
+                postman = PikaPostman(**settings.kwargs, loop=self.loop, client=self, hooks=self.registered_hooks)
             except ImportError as e:
                 logger.error("You cannot use the Pika Postman without installing aio_pika")
                 raise e
@@ -151,7 +153,7 @@ class BaseBergen:
         elif settings.type == PostmanProtocol.WEBSOCKET:
             try:
                 from bergen.postmans.websocket import WebsocketPostman
-                postman = WebsocketPostman(**settings.kwargs, loop=self.loop, client=self)
+                postman = WebsocketPostman(**settings.kwargs, loop=self.loop, client=self, hooks=self.registered_hooks)
             except ImportError as e:
                 logger.error("You cannot use the Websocket Postman without installing websockets")
                 raise e
@@ -167,7 +169,7 @@ class BaseBergen:
         if settings.type == ProviderProtocol.WEBSOCKET:
             try:
                 from bergen.provider.websocket import WebsocketProvider
-                provider = WebsocketProvider(**settings.kwargs, loop=self.loop, client=self, name=self.name)
+                provider = WebsocketProvider(**settings.kwargs, loop=self.loop, client=self, name=self.name, hooks=self.registered_hooks)
             except ImportError as e:
                 logger.error("You cannot use the Websocket Provider without installing websockets")
                 raise e
@@ -183,7 +185,7 @@ class BaseBergen:
         if settings.type == HostProtocol.WEBSOCKET:
             try:
                 from bergen.entertainer.websocket import WebsocketHost
-                provider = WebsocketHost(**settings.kwargs, loop=self.loop, client=self)
+                provider = WebsocketHost(**settings.kwargs, loop=self.loop, client=self, hooks=self.registered_hooks)
             except ImportError as e:
                 logger.error("You cannot use the Websocket Entertainer without installing websockets")
                 raise e
@@ -215,6 +217,9 @@ class BaseBergen:
 
         self.identifierDataPointMap = {model.identifier.lower(): model.point for model in self._transcript.models}
         self.identifierWardMap = {model.identifier.lower(): datapoint_registry.createWardForDatapoint(model.point, self) for model in self._transcript.models}
+
+        
+
 
         logger.info("Succesfully registered Datapoints") 
         await datapoint_registry.configureWards()
@@ -303,12 +308,23 @@ class BaseBergen:
         else:
             raise Exception("We are not in Enterainer mode")
 
+    def hook(self, hook: str, overwrite=False):
+
+        def real_decorator(function):
+            self.registered_hooks.addHook(hook, function, overwrite=overwrite)
+            return function
+
+        return real_decorator
+
 
     def enable(self, *args, **kwargs):
         if self._provider:
             return self.provider.enable(*args, **kwargs)
         else:
             raise Exception("We are not in Provider Mode")
+
+    async def provide_async(self):
+        return await self.provider.provide_async()
 
     def provide(self):
         return self.provider.provide()

@@ -8,4 +8,4 @@ class IntArgPort(BaseArgPort):
   def __init__(self, widget = None, **kwargs) -> None:
       if widget is None:
           widget = IntWidget()
-      super().__init__("int", widget,**kwargs)
+      super().__init__(widget,**kwargs)

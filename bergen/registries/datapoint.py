@@ -23,29 +23,16 @@ class DataPointRegistry(object):
     def registerClientBuilder(self, type:str , builder: Callable):
         self.builders[type] = builder
 
-    def getClientForData(self, point, auth: BaseAuthBackend) -> BaseWard:
-        if point.name in self.pointNameWardMap:
-            return self.pointNameWardMap[point.name]
-
-        logger.info("Creating new DataPoint parser")
-
-        if point.type in self.builders:
-            builder = self.builders[point.type]
-            self.pointNameWardMap[point.name] = builder(point, auth)
-            return self.pointNameWardMap[point.name]
-        else:
-            raise NotImplementedError("We have no idea how to build that datatype")
-
     def createWardForDatapoint(self, point, bergen) -> BaseWard:
-        if point.name in self.pointNameWardMap:
-            return self.pointNameWardMap[point.name]
+        if point.id in self.pointNameWardMap:
+            return self.pointNameWardMap[point.id]
 
         logger.info(f"Creating new Ward for Datapoint {point}")
 
         if point.type in self.builders:
             builder = self.builders[point.type]
-            self.pointNameWardMap[point.name]  = builder(point, bergen)
-            return self.pointNameWardMap[point.name]
+            self.pointNameWardMap[point.id]  = builder(point, bergen)
+            return self.pointNameWardMap[point.id]
         else:
             raise NotImplementedError(f"We have no idea how to build the ward for this Datapoint {point.type}")
 

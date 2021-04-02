@@ -49,6 +49,26 @@ class HostHelper(ABC):
     async def pass_exception(self, message, exception):
         pass
 
+class PodHelper(ABC):
+
+    def __init__(self, host) -> None:
+        self.host = host
+        pass
+
+    @abstractmethod
+    async def pass_provided(self, message, value):
+        pass
+
+    @abstractmethod
+    async def pass_unprovided(self, message, value, percentage=None):
+        pass
+
+    @abstractmethod
+    async def pass_failed(self, message, exception):
+        pass
+
+
+
 
 assign_var = contextvars.ContextVar('assign', default=None)
 
@@ -137,10 +157,7 @@ class Actor:
 
 
 class AsyncActor(Actor):
-
-    def __init__(self, pod: Pod, helper: HostHelper) -> None:
-        super().__init__(pod, helper)
-
+    pass
 
 
 class AsyncFuncActor(AsyncActor):
@@ -157,8 +174,6 @@ class AsyncFuncActor(AsyncActor):
         except Exception as e:
             logger.error(e)
             await self.helper.pass_exception(message, e)
-
-
 
 
 class AsyncGenActor(AsyncActor):
@@ -180,8 +195,8 @@ class AsyncGenActor(AsyncActor):
 class ThreadedFuncActor(Actor):
     nworkers = 5
 
-    def __init__(self, pod: Pod, helper: HostHelper, loop) -> None:
-        super().__init__(pod, helper, loop=loop)
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
         self.threadpool = ThreadPoolExecutor(self.nworkers)
 
     def progress(self, value, percentage):

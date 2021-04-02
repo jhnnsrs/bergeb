@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from bergen.messages.postman.provide.bounced_provide import BouncedProvideMessage
 from bergen.extenders.node import Reservation
 from bergen.entertainer.actor import AsyncFuncActor, AsyncGenActor, HostHelper
 from bergen.messages.postman import AssignMessage
@@ -305,8 +306,16 @@ async def main():
     async with ProviderBergen(
         config_path="fluss.yaml",
         name="Fluss",
+        force_new_token=True,
         auto_reconnect=True# if we want to specifically only use pods on this innstance we would use that it in the selector
-    ):
+    ) as client:
+
+        @client.hook("bounced_provide", overwrite=True)
+        async def on_bounced_provide(self, bounced_provide: BouncedProvideMessage):
+            logger.error("Nana")
+
+
+        await client.provide_async()
 
 
         acting = Flow(None, None)

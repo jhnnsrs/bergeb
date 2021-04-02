@@ -1,3 +1,4 @@
+from bergen.messages.postman import provide
 from bergen.messages.postman.provide import BouncedProvideMessage
 from bergen.clients.provider import ProviderBergen
 from bergen.entertainer.actor import AsyncFuncActor
@@ -15,18 +16,25 @@ client = ProviderBergen(
 )
 
 
+async def spawnDockerForProvide(template_id):
+    return True
 
 
 
 @client.hook("bounced_provide", overwrite=True)
 async def on_bounced_provide(self: BaseProvider, bounced_provide: BouncedProvideMessage):
 
+    await spawnDockerForProvide(bounced_provide.data.template)
+
     
+    #   
 
 
 
 
-    self.client.entertainer.entertain()
+
+    # The Entertain path (in same process or on VM???)
+    self.client.entertainer.entertain(bounced_provide, NewAdder)
 
     logger.error("Nana")
 

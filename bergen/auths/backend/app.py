@@ -26,23 +26,7 @@ class ArnheimBackendOauth(BaseAuthBackend):
         auth_client = BackendApplicationClient(client_id=self.client_id, scope=self.scope)
         oauth_session = OAuth2Session(client=auth_client, scope=self.scope)
 
-
-        def fetch_token(thetry=0):
-            try:
+        token = oauth_session.fetch_token(token_url=self.token_url, client_id=self.client_id,
+        client_secret=self.client_secret, verify=True)
+        return token
                 
-                token = oauth_session.fetch_token(token_url=self.token_url, client_id=self.client_id,
-                client_secret=self.client_secret, verify=True)
-
-
-                if "access_token" not in token:
-                    raise Exception("No access token Provided")
-
-                return token["access_token"]
-            except InvalidClientError as e:
-                raise e
-            except Exception as e:
-                if thetry == self.failedTries or not self.auto_retry: raise AuthError(f"Cannot connect to Arnheim instance on {self.token_url}: {e}")
-                logger.error(f"Couldn't connect to the Arnheim Instance at {self.token_url}. Retrying in 2 Seconds")
-                return fetch_token(thetry=thetry + 1)
-      
-        return fetch_token()

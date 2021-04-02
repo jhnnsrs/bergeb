@@ -1,0 +1,18 @@
+
+arkitekt:
+  host: localhost
+  port: 8090
+  secure: False
+
+herre:
+  host: localhost
+  port: 8000
+  client_id: huKQboFgvLaqfVb23QAJ7Kchp9Rzl87vCVRgWHjZ
+  client_secret: xfhe44E558wXCbQqHs3jbQWyOKxySVllFN5IjDu9dsf9Phbm268wsKqlavE6Ss6NA8Xr0DMV2tVSU1N10cAwcr3rj27zB11nL9cdahC6F9UEsM7NZ6F7H3G4mCJOm3U8
+  grant_type: implicit
+  redirect_uri: http://localhost:3000/callback
+  scopes: 
+      - read
+      - write
+      - provider
+  secure: False

@@ -5,9 +5,9 @@ from bergen.types.node.widgets.base import BaseWidget
 
 class BaseArgPort:
 
-  def __init__(self, type, widget, key=None, label=None, description=None) -> None:
+  def __init__(self, widget, key=None, label=None, description=None) -> None:
       assert isinstance(widget, BaseWidget), "Widget be instance of a subclass of BaseWidget"
-      self.type = type
+      self.type = self.__class__
       self.key = key
       self.label = label
       self.widget = widget

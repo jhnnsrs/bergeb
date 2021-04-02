@@ -18,24 +18,17 @@ class LegacyApplication(BaseAuthBackend):
         self.username = username
         self.password = password
 
+        self.oauth = OAuth2Session(client=LegacyApplicationClient(client_id=self.client_id))
+
     
     def fetchToken(self, loop=None) -> str:
         # Getting token
-
-        self.legacy_app_client =  LegacyApplicationClient(self.client_id)
+        print(self.client_id)
+        self.legacy_app_client =  LegacyApplicationClient(self.client_id, scope=self.scope)
         if not self.username: self.username = input("Enter your username:    ")
         if not self.password: self.password = input("Password?               ")
 
-        data = { "username": self.username, "password": self.password, "grant_type": "password", "scope": self.scope, "client_id": self.client_id, "client_secret": self.client_secret}
-
-        url = self.token_url + "/"
-        try:
-            response = requests.post(url, data=data).json()
-        except Exception as e:
-            raise e
-
-
-        if "access_token" in response:
-            return response["access_token"]
-        else:
-            raise Exception(f"Wasn't authorized! {response}")
+        token = self.oauth.fetch_token(token_url=self.token_url,
+        username=self.username, password=self.password, client_id=self.client_id,
+        client_secret=self.client_secret)
+        return token

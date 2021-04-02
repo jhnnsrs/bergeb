@@ -1,13 +1,15 @@
 from abc import ABC, abstractmethod
+from bergen.hookable.base import Hookable
 from bergen.schema import Node, Pod
 from typing import Callable
 from aiostream import stream
 import asyncio
 
-class BasePostman(ABC):
+class BasePostman(Hookable):
     """ A Postman takes node requests and translates them to Bergen calls, basic implementations are GRAPHQL and PIKA"""
 
-    def __init__(self, requires_configuration=True, loop=None, client=None) -> None:
+    def __init__(self, requires_configuration=True, loop=None, client=None, **kwargs) -> None:
+        super().__init__(**kwargs)
         assert loop is not None, "Please provide a Loop to your Postman, Did you forget to call super.init with **kwargs?"
         self.loop = loop or asyncio.get_event_loop()
         self.client = client

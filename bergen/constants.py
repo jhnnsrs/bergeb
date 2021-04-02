@@ -13,6 +13,7 @@ NEGOTIATION_GQL = TypedGQL("""
     models {
         identifier
         point {
+            id
             outward
             port
             type

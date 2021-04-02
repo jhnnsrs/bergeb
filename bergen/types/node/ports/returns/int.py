@@ -6,4 +6,4 @@ from bergen.types.node.ports.returns.base import BaseReturnPort
 class IntReturnPort(BaseReturnPort):
 
   def __init__(self, **kwargs) -> None:
-      super().__init__("int",**kwargs)
+      super().__init__(**kwargs)

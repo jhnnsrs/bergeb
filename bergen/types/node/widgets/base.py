@@ -1,8 +1,8 @@
 
 class BaseWidget:
 
-  def __init__(self, type, dependencies=None) -> None:
-      self.type = type
+  def __init__(self, dependencies=None) -> None:
+      self.type = self.__class__.__name__
       self.dependencies = dependencies or []
       assert isinstance(self.dependencies, list), "Depencies must be a list of strings"
 

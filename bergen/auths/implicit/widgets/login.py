@@ -14,7 +14,7 @@ class LoginWindow(QWebEngineView):
         self.backend = backend
 
         auth_url, state = self.session.authorization_url(self.backend.auth_url)
-        print("Generated authorization url: {}".format(auth_url))
+        #print("Generated authorization url: {}".format(auth_url))
 
         self.urlChanged.connect(self.check_URL)
         self.callback = tokenCallback
@@ -28,13 +28,11 @@ class LoginWindow(QWebEngineView):
 
     def check_URL(self, url: QtCore.QUrl):
         url = url.url()
-        print(url)
+        #print(url)
         if url.startswith(self.backend.redirect_uri):
             token = self.session.token_from_fragment(url)
             if token: self.callback(token)
             
-            token =  self.session.fetch_token(url)
-            self.callback(token)
         #url is a QUrl object, covert it to string for easier usage
         pass
 
@@ -62,4 +60,4 @@ class LoginDialog(QDialog):
         dialog = LoginDialog(backend=backend, parent=parent)
         result = dialog.exec_()
         token = dialog.token
-        return token, result ==QDialog.Accepted
+        return token, result == QDialog.Accepted

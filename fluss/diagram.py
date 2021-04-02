@@ -27,6 +27,13 @@ class ArkitektData(BaseModel):
     node: Arkitekt
     selector: Selector
 
+class Widget(BaseModel):
+    type: str = Field(None, alias='__typename')
+    query:  Optional[str]
+    dependencies: Optional[List[str]]
+    max:  Optional[str]
+    min:  Optional[str]
+
 
 class Port(BaseModel):
     type: str = Field(None, alias='__typename')
@@ -37,7 +44,7 @@ class Port(BaseModel):
 
 class ArgPort(Port):
     identifier: Optional[str]
-    widget: Optional[dict]
+    widget: Optional[Widget]
 
 
 class KwargPort(Port):

@@ -5,8 +5,8 @@ from bergen.types.node.widgets.base import BaseWidget
 
 class BaseReturnPort:
 
-  def __init__(self, type, key=None, label=None, description=None) -> None:
-      self.type = type
+  def __init__(self, key=None, label=None, description=None) -> None:
+      self.type = self.__class__.__name__
       self.key = key
       self.label = label
       self.description = description
