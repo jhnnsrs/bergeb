@@ -1,5 +1,6 @@
 
 
+from bergen.queries.delayed.node import DETAIL_NODE_FR
 from bergen.query import DelayedGQL
 
 
@@ -8,25 +9,9 @@ query Template($id: ID,){
   template(id: $id){
     id
     node {
-        id
-        name
-        image
-        inputs {
-          __typename
-          key
-          required
-          ... on ModelPortType {
-            identifier
-          }
-        }
-        outputs {
-          __typename
-          key
-          required
-          ... on ModelPortType {
-            identifier
-          }
-        }
+        """
+        + DETAIL_NODE_FR+
+        """
     }
   }
 }

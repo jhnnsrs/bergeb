@@ -7,7 +7,7 @@ class BaseArgPort:
 
   def __init__(self, widget, key=None, label=None, description=None) -> None:
       assert isinstance(widget, BaseWidget), "Widget be instance of a subclass of BaseWidget"
-      self.type = self.__class__
+      self.type = self.__class__.__name__
       self.key = key
       self.label = label
       self.widget = widget

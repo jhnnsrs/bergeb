@@ -13,12 +13,12 @@ class HerreConfig(BaseModel):
     port: int 
     client_id: str 
     client_secret: str
-    grant_type: GrantType
+    authorization_grant_type: GrantType
     scopes: List[str]
     redirect_uri: Optional[str]
 
     def __str__(self) -> str:
-        return f"{'Secure' if self.secure else 'Insecure'} Connection to {self.host}:{self.port} on Grant {self.grant_type}"
+        return f"{'Secure' if self.secure else 'Insecure'} Connection to {self.host}:{self.port} on Grant {self.authorization_grant_type}"
 
 
 class User(BaseModel):

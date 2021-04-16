@@ -85,7 +85,6 @@ class TypedGQL(GQL, Generic[MyType]):
         return self._cls
 
     async def run_async(self, ward=None, variables=None, **kwargs) -> MyType:
-        from bergen.registries.arnheim import get_current_arnheim
         ward = ward or self._cls.get_ward()
         returnedobject = await ward.run_async(self, variables=variables,**kwargs)
         assert returnedobject is not None, "We received nothing back from the Server! Refine your Query!"
@@ -97,7 +96,6 @@ class TypedGQL(GQL, Generic[MyType]):
             raise e
 
     def run(self, ward=None, variables=None, **kwargs) -> MyType:
-        from bergen.registries.arnheim import get_current_arnheim
         ward = ward or self._cls.get_ward()
         returnedobject = ward.run(self, variables=variables, **kwargs)
         assert returnedobject is not None, "We received nothing back from the Server! Refine your Query!"
@@ -105,8 +103,7 @@ class TypedGQL(GQL, Generic[MyType]):
         return self.cls(**returnedobject)
 
     def subscribe(self, ward=None, **kwargs) -> Generator[MyType, None,None]:
-        from bergen.registries.arnheim import get_current_arnheim
-        ward = ward or get_current_arnheim().getWard()
+        ward = ward or self._cls.get_ward()
         return ward.subscribe(self, **kwargs)
 
     def _repr_html_(self) -> str:
@@ -128,7 +125,6 @@ class Query(GQL, Generic[MyType]):
         return self._cls
 
     def run(self, ward=None, variables=None, **kwargs) -> MyType:
-        from bergen.registries.arnheim import get_current_arnheim
         ward = ward or self._cls.get_ward()
         returnedobject = ward.run(self, variables=variables,**kwargs)
         if isinstance(returnedobject,list): raise Exception("Received a freaking list..., Please run QueryList")
@@ -137,8 +133,7 @@ class Query(GQL, Generic[MyType]):
         return self.cls(**returnedobject) if returnedobject else None
 
     def subscribe(self, ward=None, **kwargs) -> Generator[MyType, None,None]:
-        from bergen.registries.arnheim import get_current_arnheim
-        ward = ward or get_current_arnheim().getWard()
+        ward = ward or self._cls.get_ward()
         return ward.subscribe(self, **kwargs)
 
     def _repr_html_(self) -> str:
@@ -160,14 +155,12 @@ class QueryList(GQL, Generic[MyType]):
         return self._cls
 
     def run(self, ward=None, variables=None, **kwargs) -> List[MyType]:
-        from bergen.registries.arnheim import get_current_arnheim
         ward = ward or self._cls.get_ward()
         returnedobject = ward.run(self, variables=variables, **kwargs)
         return ListQuery([self.cls(**item) for item in returnedobject]) if returnedobject else ListQuery([])
 
     def subscribe(self, ward=None, **kwargs) -> Generator[List[MyType], None,None]:
-        from bergen.registries.arnheim import get_current_arnheim
-        ward = ward or get_current_arnheim().getWard()
+        ward = ward or self._cls.get_ward()
         return ward.subscribe(self, **kwargs)
 
     def _repr_html_(self) -> str:
@@ -188,7 +181,6 @@ class AsyncQuery(GQL, Generic[MyType]):
         return self._cls
 
     async def run(self, ward=None, variables=None, **kwargs) -> MyType:
-        from bergen.registries.arnheim import get_current_arnheim
         ward = ward or self._cls.get_ward()
         returnedobject = await ward.run_async(self, variables=variables,**kwargs)
         if isinstance(returnedobject,list): raise Exception("Received a freaking list..., Please run QueryList")
@@ -197,8 +189,7 @@ class AsyncQuery(GQL, Generic[MyType]):
         return self.cls(**returnedobject) 
 
     def subscribe(self, ward=None, **kwargs) -> Generator[MyType, None,None]:
-        from bergen.registries.arnheim import get_current_arnheim
-        ward = ward or get_current_arnheim().getWard()
+        ward = ward or self._cls.get_ward()
         return ward.subscribe(self, **kwargs)
 
     def _repr_html_(self) -> str:
@@ -219,14 +210,12 @@ class AsyncQueryList(GQL, Generic[MyType]):
         return self._cls
 
     async def run(self, ward=None, variables=None, **kwargs) -> List[MyType]:
-        from bergen.registries.arnheim import get_current_arnheim
         ward = ward or self._cls.get_ward()
         returnedobject = await ward.run_async(self, variables=variables,**kwargs)
         return ListQuery([self.cls(**item) for item in returnedobject]) if returnedobject else ListQuery([])
 
     def subscribe(self, ward=None, **kwargs) -> Generator[MyType, None,None]:
-        from bergen.registries.arnheim import get_current_arnheim
-        ward = ward or get_current_arnheim().getWard()
+        ward = ward or self._cls.get_ward()
         return ward.subscribe(self, **kwargs)
 
     def _repr_html_(self) -> str:

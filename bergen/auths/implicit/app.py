@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from bergen.graphical import GraphicalBackend
 
 from bergen.auths.types import HerreConfig
 
@@ -8,16 +9,6 @@ from bergen.auths.base import BaseAuthBackend
 import logging
 
 logger = logging.getLogger(__name__)
-
-try:
-    from bergen.auths.implicit.widgets.login import LoginDialog
-    # this has to be here because QtWebENgineWIdgets must be imported before a QCore Application
-    Dialog = LoginDialog
-
-except Exception as e:
-    logger.error(e)
-    Dialog = None
-
 
 class ImplicitApplication(BaseAuthBackend):
 
@@ -44,22 +35,18 @@ class ImplicitApplication(BaseAuthBackend):
             redirect_uri=self.redirect_uri,
         )
 
-        try:
-            from PyQt5 import QtWidgets
+        def import_webview():
+            from PyQt5.QtWebEngineWidgets import QWebEngineView
+
+
+
+        token = None
+
+        with GraphicalBackend(run_before_when_no_app=import_webview):
             from bergen.auths.implicit.widgets.login import LoginDialog
-
-            if QtWidgets.QApplication.instance() is None:
-                # if it does not exist then a QApplication is created
-                app = QtWidgets.QApplication([])
-                token, accepted = LoginDialog.getToken(backend=self, parent=self.parent)
-                app.exit()
-
-            else:
-                token, accepted = LoginDialog.getToken(backend=self, parent=self.parent)
-
-            return token
-
-        except ImportError as e:
-            raise Exception("You need to have PyQt5 and PyQtWebEngine installed to use this Authentication flow")
+            token, accepted = LoginDialog.getToken(backend=self, parent=self.parent)
+            
+        
+        return token
         # We actually get a fully fledged thing back
 

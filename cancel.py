@@ -1,35 +1,30 @@
 #%%
 from bergen.clients.default import Bergen
 from bergen.models import Node
+from bergen.monitor.monitor import Monitor
 import asyncio
 import time
 
 
 async def main():
-        async with Bergen(
-                host="p-tnagerl-lab1",
-                port=8000,
-                client_id="DSNwVKbSmvKuIUln36FmpWNVE2KrbS2oRX0ke8PJ", 
-                client_secret="Gp3VldiWUmHgKkIxZjL2aEjVmNwnSyIGHWbQJo6bWMDoIUlBqvUyoGWUWAe6jI3KRXDOsD13gkYVCZR0po1BLFO9QT4lktKODHDs0GyyJEzmIjkpEOItfdCC4zIa3Qzu",
-                name="frankomanko",# if we want to specifically only use pods on this innstance we would use that it in the selector
-        ):
+        async with Bergen(config_path="tests/configs/implicit.yaml", force_new_token=True):
+            zseries = await Node.asyncs.get(package="Flow Boy", interface="newadder")
 
-                sleep = await Node.asyncs.get(package="karl", interface="karl")
-                        
-                future = asyncio.ensure_future(sleep({"interval": 5}))
+            with Monitor(title="testing", progress=True):
+                async with zseries.reserve(room="sted", auto_provide=True, auto_unprovide=False) as res:
+                    future = asyncio.ensure_future(res.assign(100,200,z=0))
 
-                await asyncio.sleep(2)
-                if not future.cancelled():
-                    future.cancel()
-                else:
-                    my_task = None
+                    await asyncio.sleep(1)
+                    if not future.cancelled():
+                        future.cancel()
+                    else:
+                        my_task = None
 
-
-                await asyncio.sleep(2)
-                try:
-                    await future.result()
-                except:
-                    pass
+                    await asyncio.sleep(2)
+                    try:
+                        await future.result()
+                    except:
+                        pass
 
 
 

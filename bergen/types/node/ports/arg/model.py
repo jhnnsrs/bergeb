@@ -2,7 +2,7 @@
 
 from bergen.types.node.ports.arg.base import BaseArgPort
 from typing import Type
-from bergen.types.node.widgets.querywidget import QueryWidget
+from bergen.types.node.widgets import QueryWidget
 from bergen.types.model import ArnheimModel
 
 class ModelArgPort(BaseArgPort):

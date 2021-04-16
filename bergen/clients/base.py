@@ -1,4 +1,5 @@
 import asyncio
+from bergen.schema import Transcript
 from bergen.hookable.base import Hookable, Hooks
 from oauthlib.oauth2.rfc6749.clients.base import Client
 
@@ -13,7 +14,13 @@ from bergen.wards.base import BaseWard
 from bergen.postmans.base import BasePostman
 import logging
 from threading import Thread
-
+from bergen.console import console
+from rich.panel import Panel
+from rich.table import Table
+from rich import pretty
+pretty.install()
+from rich.traceback import install
+install()
 
 logger = logging.getLogger(__name__)
 import os
@@ -40,22 +47,16 @@ class BaseBergen:
             bind=True,
             log=logging.INFO,
             jupyter=False,
-            name=None,
             force_sync = False,
             loop = None,
             client_type: ClientType = ClientType.CLIENT,
+            log_stream=False,
             **kwargs) -> None:
         
         if jupyter:
-            setLogging(logging.ERROR)
+            setLogging(logging.ERROR, log_stream=False)
         else:
-            print(r"     _               _          _              ____ _ _            _    ")   
-            print(r"    / \   _ __ _ __ | |__   ___(_)_ __ ___    / ___| (_) ___ _ __ | |_  ")
-            print(r"   / _ \ | '__| '_ \| '_ \ / _ \ | '_ ` _ \  | |   | | |/ _ \ '_ \| __| ")
-            print(r"  / ___ \| |  | | | | | | |  __/ | | | | | | | |___| | |  __/ | | | |_  ")
-            print(r" /_/   \_\_|  |_| |_|_| |_|\___|_|_| |_| |_|  \____|_|_|\___|_| |_|\__| ")
-            print(r"")
-            setLogging(log)
+            setLogging(log, log_stream=log_stream)
 
 
         self.running_in_sync = force_sync
@@ -73,21 +74,20 @@ class BaseBergen:
         
         if bind: 
             # We only import this here for typehints
-            from bergen.registries.arnheim import set_current_arnheim
-            set_current_arnheim(self)
+            from bergen.registries.client import set_current_client
+            set_current_client(self)
 
         self.auth = auth
+
+        self.application = self.auth.application
+
+
+
         self.config = config
-        self.name = name
         self.client_type = client_type
+
+
         self.registered_hooks = Hooks()
-
-
-        self.token = self.auth.getToken()
-
-        logger.info("We are authorized")
-        logger.info(str(config))
-
 
         self.host = config.host
         self.port = config.port
@@ -139,7 +139,7 @@ class BaseBergen:
             raise Exception(f"Couldn't find a Ward/Datapoint for Model {identifier}, this mostly results from importing a schema that isn't part of your arkitekts configuration ..Check Documentaiton")
 
 
-    def getPostmanFromSettings(self, transcript):
+    def getPostmanFromSettings(self, transcript: Transcript):
         settings = transcript.postman
 
         if settings.type == PostmanProtocol.RABBITMQ:
@@ -163,13 +163,13 @@ class BaseBergen:
 
         return postman
 
-    def getProviderFromSettings(self, transcript):
+    def getProviderFromSettings(self, transcript: Transcript):
         settings = transcript.provider
 
         if settings.type == ProviderProtocol.WEBSOCKET:
             try:
                 from bergen.provider.websocket import WebsocketProvider
-                provider = WebsocketProvider(**settings.kwargs, loop=self.loop, client=self, name=self.name, hooks=self.registered_hooks)
+                provider = WebsocketProvider(**settings.kwargs, loop=self.loop, client=self, hooks=self.registered_hooks)
             except ImportError as e:
                 logger.error("You cannot use the Websocket Provider without installing websockets")
                 raise e
@@ -184,8 +184,8 @@ class BaseBergen:
 
         if settings.type == HostProtocol.WEBSOCKET:
             try:
-                from bergen.entertainer.websocket import WebsocketHost
-                provider = WebsocketHost(**settings.kwargs, loop=self.loop, client=self, hooks=self.registered_hooks)
+                from bergen.entertainer.websocket import WebsocketEntertainer
+                provider = WebsocketEntertainer(**settings.kwargs, loop=self.loop, client=self, hooks=self.registered_hooks)
             except ImportError as e:
                 logger.error("You cannot use the Websocket Entertainer without installing websockets")
                 raise e
@@ -200,12 +200,11 @@ class BaseBergen:
         from bergen.registries.datapoint import get_datapoint_registry
 
         # Instantiate our Main Ward, this is only for Nodes and Pods
-        self.main_ward = AIOHttpGraphQLWard(host=self.host, port=self.port, protocol=self.protocol, token=self.token, loop=self.loop)
+        self.main_ward = AIOHttpGraphQLWard(host=self.host, port=self.port, protocol=self.protocol, token=self.auth.access_token, loop=self.loop)
         await self.main_ward.configure()
 
         # We resort escalating to the different client Type protocols
-        logger.info(f"Negotiating to be a {self.client_type}")
-        self._transcript = await NEGOTIATION_GQL.run_async(ward=self.main_ward, variables={"clientType": self.client_type, "name": self.name})
+        self._transcript = await NEGOTIATION_GQL.run_async(ward=self.main_ward, variables={"clientType": self.client_type})
         
 
         #Lets create our different Wards 
@@ -219,25 +218,51 @@ class BaseBergen:
         self.identifierWardMap = {model.identifier.lower(): datapoint_registry.createWardForDatapoint(model.point, self) for model in self._transcript.models}
 
         
-
-
-        logger.info("Succesfully registered Datapoints") 
         await datapoint_registry.configureWards()
-        logger.info("Succesfully connected to Datapoints") 
-
 
         self.postman = self.getPostmanFromSettings(self._transcript)
         await self.postman.connect()
 
         if self.client_type in [ClientType.PROVIDER, ClientType.HOST]:
-            logger.warn("We are connected as a Host")
             self._entertainer = self.getEntertainerFromSettings(self._transcript)
             await self._entertainer.connect()
 
         if self.client_type == ClientType.PROVIDER:
-            logger.warn("We are connected as a Provider")
             self._provider = self.getProviderFromSettings(self._transcript)
             await self._provider.connect()
+
+        self.log_table()
+
+
+    def log_table(self):
+
+        table = Table.grid()
+        table.add_column()
+        table.add_column()
+        table.add_row()
+
+        arkitekt_table = Table(title="Arkitekt", show_header=False)
+        for key, value in self.config.dict().items():
+            arkitekt_table.add_row(key,str(value))
+
+        herre_table = Table(title="Herre", show_header=False)
+        for key, value in self.auth.config.dict().items():
+            if key == "client_secret": continue
+            herre_table.add_row(key, str(value))
+        table.add_row("Welcome to Arnheim")
+        table.add_row(herre_table, arkitekt_table)
+
+        table.add_row()
+
+        if self.client_type in [ClientType.PROVIDER, ClientType.HOST]:
+            table.add_row("We are Connected as a [bold]Host[/bold]")
+        if self.client_type in [ClientType.PROVIDER]:
+            table.add_row("We are Connected as a [bold]Provider[/bold]")
+
+        table.add_row()
+        table.add_row("[green]Connected :pile_of_poo:")
+
+        console.print(Panel(table, title="Arkitekt"))
 
 
 

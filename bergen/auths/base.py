@@ -1,5 +1,6 @@
 
 from abc import ABC, abstractmethod
+from pydantic.main import BaseModel
 
 from requests.models import Response
 from bergen.enums import ClientType
@@ -8,15 +9,17 @@ import os
 import requests
 import logging
 from .types import User, HerreConfig
-
+import json
 logger = logging.getLogger(__name__)
-
+from bergen.console import console
 
 
 class AuthError(Exception):
     pass
 
-
+class Application(BaseModel):
+    name: str
+    client_id: str
 
 
 
@@ -38,7 +41,11 @@ class BaseAuthBackend(ABC):
         self.force_new_token = force_new_token  
 
         self.scope = " ".join(self.scopes)
+        
+        
         self._user = None
+        self._accesstoken = None
+        self._application = None
 
         # Lets check if we already have a local toke
         config_name = "token.db"
@@ -71,35 +78,53 @@ class BaseAuthBackend(ABC):
     def getUser(self):
         assert self.token is not None, "Need to authenticate before accessing the User"
         if not self._user:
-            answer = requests.get(self.base_url + "me/", headers={"Authorization": f"Bearer {self.token['access_token']}"})
+            answer = requests.get(self.base_url + "me/", headers={"Authorization": f"Bearer {self.access_token}"})
             self._user = User(**answer.json())
         return self._user
 
+    @property
+    def access_token(self):
+        if not self._accesstoken:
+            self.getToken()
+        
+        return self._accesstoken
+
+    @property
+    def user(self):
+        if not self._user:
+            self.getUser()
+
+        return self._user
+
+    @property
+    def application(self) -> Application:
+        if not self._application:
+            self.getToken()
+
+        return self._application
+
+
     def getToken(self, loop=None) -> str:
-        if self.token is None:
-            try:
-                self.token = self.fetchToken()
-            except:
-                logger.error(f"Couldn't fetch Token with config {self.config}")
-                raise
-            
-            with shelve.open(self.db_path) as cfg:
-                cfg['token'] = self.token
-
-        if self.needs_validation:
-            response = requests.post(self.check_url, {"token": self.token["access_token"]}, headers={"Authorization": f"Bearer {self.token['access_token']}"})
-            print(response.status_code)
-            self.needs_validation = False
-
-            if response.status_code != 200:
-                logger.info("Need to refetch Token!!") # Was no longer valid, fetching anew
+        if self._accesstoken is None:
+            if self.token is None:
                 try:
                     self.token = self.fetchToken()
                 except:
                     logger.error(f"Couldn't fetch Token with config {self.config}")
                     raise
-
+                
                 with shelve.open(self.db_path) as cfg:
                     cfg['token'] = self.token
-                
-        return self.token["access_token"]
+
+            response = requests.get(self.check_url, headers={"Authorization": f"Bearer {self.token['access_token']}"})
+
+
+
+            if response.status_code != 200:
+                self.token == None
+                self.fetchToken()
+
+            self._application = Application(**json.loads(response.content))
+            self._accesstoken =  self.token["access_token"]
+
+        return self._accesstoken

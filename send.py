@@ -18,7 +18,6 @@ async def main():
                 then = time.time()
                 result = await asyncio.gather(*[sleep({"sigma": i, "file_path": 1}) for i in range(0,1)])
 
-                print(result, time.time() - then)
 
 
 

@@ -1,5 +1,5 @@
 
-from bergen.types.node.widgets.intwidget import IntWidget
+from bergen.types.node.widgets import IntWidget
 from bergen.types.node.ports.arg.base import BaseArgPort
 
 

@@ -1,6 +1,6 @@
 import json
 from pydantic import BaseModel
-from typing import Optional, Type, TypeVar
+from typing import Any, Callable, Optional, Type, TypeVar
 
 from pydantic.types import Json
 from pydantic import Field
@@ -41,4 +41,12 @@ class MessageModel(BaseModel):
     def from_channels(cls: Type[T], message: str) -> T:
         return cls(**json.loads(message))
 
+    @classmethod
+    def unwrapped_message(cls: Type[T], function) -> Callable[[Any], T]:
+
+        async def unwrapped(self, message, *args, **kwargs):
+            input = cls.from_message(message)
+            return await function(self, input, message, *args, **kwargs)
+
+        return unwrapped
     

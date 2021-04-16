@@ -1,130 +1,20 @@
-
-
-from abc import ABC, abstractmethod
-from asyncio.events import AbstractEventLoop
+from abc import abstractmethod
 from bergen.clients.base import BaseBergen
 from bergen.messages.base import MessageModel
 from bergen.hookable.base import Hookable, hookable
-from bergen.entertainer.actor import Actor, AsyncFuncActor, AsyncGenActor, ThreadedFuncActor
-from bergen.messages.postman.assign.assign import AssignMessage
+from bergen.actors.base import Actor
+from bergen.actors.functional import *
 from bergen.provider.utils import createNodeFromActor, createNodeFromFunction
-
+from bergen.console import console
 from pydantic.main import BaseModel
-from bergen.types.node import ports
-from typing import Dict, Tuple, TypedDict, Union
-from bergen.utils import ExpansionError, expandInputs, shrinkOutputs
-from bergen.schema import Template, NodeType
-from bergen.constants import ACCEPT_GQL, OFFER_GQL, SERVE_GQL
+from bergen.constants import OFFER_GQL
 import logging
-import namegenerator
 import asyncio
-import websockets
-from bergen.models import Node, Pod
+from bergen.models import Node
 import inspect
-import sys
-from aiostream import stream
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
-from functools import partial
+from bergen.messages import *
+
 logger = logging.getLogger()
-import copy
-import json
-from bergen.types.model import ArnheimModel
-import uuid
-from bergen.messages.postman.provide import BouncedProvideMessage, ProvideProgressMessage, BouncedCancelProvideMessage
-
-
-class BaseHelper(ABC):
-
-    def __init__(self, peasent) -> None:
-        self.peasent = peasent
-        pass
-
-    @abstractmethod
-    async def pass_yield(self, message, value):
-        pass
-
-    @abstractmethod
-    async def pass_progress(self, message, value, percentage=None):
-        pass
-
-    @abstractmethod
-    async def pass_result(self, message, value):
-        pass
-
-    @abstractmethod
-    async def pass_exception(self, message, exception):
-        pass
-
-
-class AssignationHelper():
-
-    def __init__(self, peasent_helper: BaseHelper, message: AssignMessage, loop: AbstractEventLoop = None) -> None:
-        self.peasent_helper = peasent_helper
-        self.message = message
-        self.loop = loop
-        pass
-
-    @abstractmethod
-    def progress(self, value, percentage=None):
-        pass
-
-
-
-class ThreadedAssignationHelper(AssignationHelper):
-
-    def progress(self, value, percentage=None):
-        logger.info(f'{percentage if percentage else "--"} : {value}')
-        if self.loop.is_running():
-            future = asyncio.run_coroutine_threadsafe(self.peasent_helper.pass_progress(self.message, value, percentage=percentage), self.loop)
-            return future.result()
-        else:
-            self.loop.run_until_complete(self.peasent_helper.pass_progress(self.message, value, percentage=percentage))
-
-
-class AsyncAssignationHelper(AssignationHelper):
-
-    async def progress(self, value, percentage=None):
-        logger.info(f'{percentage if percentage else "--"} : {value}')
-        await self.peasent_helper.pass_progress(self.message, value, percentage=percentage)
-
-
-
-async def shrink(node_template_pod, outputs):
-    kwargs = {}
-    if isinstance(node_template_pod, Node):
-        kwargs = await shrinkOutputs(node=node_template_pod, outputs=outputs)
-
-    if isinstance(node_template_pod, Template):
-        kwargs = await shrinkOutputs(node=node_template_pod.node, outputs=outputs)
-
-    if isinstance(node_template_pod, Pod):
-        kwargs = await shrinkOutputs(node=node_template_pod.template.node, outputs=outputs)
-
-
-    return kwargs
-
-
-
-async def expand(node_template_pod, inputs):
-    kwargs = {}
-    if isinstance(node_template_pod, Node):
-        kwargs = await expandInputs(node=node_template_pod, inputs=inputs)
-
-    if isinstance(node_template_pod, Template):
-        kwargs = await expandInputs(node=node_template_pod.node, inputs=inputs)
-
-    if isinstance(node_template_pod, Pod):
-        kwargs = await expandInputs(node=node_template_pod.template.node, inputs=inputs) 
-    return kwargs
-
-
-
-threadhelper = None
-try: 
-    threadhelper = asyncio.to_thread
-except:
-    logger.warn("Threading does not work below Python 3.9")
-
 
 
 class PodPolicy(BaseModel):
@@ -156,11 +46,10 @@ class BaseProvider(Hookable):
     helperClass = None
 
 
-    def __init__(self, *args, name = None, provider: int = None, loop=None, client: BaseBergen =None, **kwargs) -> None:
+    def __init__(self, *args, provider: int = None, loop=None, client: BaseBergen =None, **kwargs) -> None:
         super().__init__(**kwargs)
         assert provider is not None, "Provider was set to none, this is weird!!"
         self.arkitekt_provider = provider
-        self.name = name
         self.client = client
         self.loop = loop or asyncio.get_event_loop()
 
@@ -193,15 +82,17 @@ class BaseProvider(Hookable):
                 is_function = inspect.isfunction(function_or_actor)
 
                 if is_coroutine:
-                    actorClass =  type(f"GeneratedActorNode{node.id}",(AsyncFuncActor,), {"assign": function_or_actor})
+                    actorClass =  type(f"GeneratedActor{template.id}",(FunctionalFuncActor,), {"assign": staticmethod(function_or_actor)})
                 elif is_asyncgen:
-                    actorClass =  type(f"GeneratedActorNode{node.id}",(AsyncGenActor,), {"assign": function_or_actor})
+                    actorClass =  type(f"GeneratedActor{template.id}",(FunctionalGenActor,), {"assign": staticmethod(function_or_actor)})
                 elif is_function:
-                    actorClass = type(f"GeneratedActorNode{node.id}",(ThreadedFuncActor,), {"assign": function_or_actor})
+                    actorClass = type(f"GeneratedActor{template.id}",(FunctionalThreadedFuncActor,), {"assign": staticmethod(function_or_actor)})
                 else:
                     raise Exception(f"Unknown type of function {function_or_actor}")
             
-            self.template_actorClass_map[str(template.id)] = actorClass
+
+            self.register_actor(str(template.id), actorClass)
+
             return actorClass
 
         return real_decorator
@@ -215,18 +106,17 @@ class BaseProvider(Hookable):
             allow_empty_doc (bool, optional): Allow the enabled function to not have a documentation. Will automatically downlevel the Node Defaults to False.
             widgets (dict, optional): Enable special widgets for the parameters. Defaults to {}.
         """
-
-
-        assert self.name is not None, "We have no name provided, cannot put created Nodes in a Package without a"
         def real_decorator(function_or_actor):
             assert callable(function_or_actor) or issubclass(function_or_actor, Actor), "Please only decorate functions or subclasses of Actor"
 
             if isactor(function_or_actor):
-                logger.info("Already is Actor. Creating Node")
-                node = createNodeFromActor(function_or_actor, self.name, allow_empty_doc=allow_empty_doc, widgets=widgets)
+                console.log("Already is Actor. Creating Node")
+                node = createNodeFromActor(function_or_actor, allow_empty_doc=allow_empty_doc, widgets=widgets)
             else:
-                logger.info("Is Function. Creating Node and Wrapping")
-                node = createNodeFromFunction(function_or_actor, self.name, allow_empty_doc=allow_empty_doc, widgets=widgets)
+                console.log("Is Function. Creating Node and Wrapping")
+                node = createNodeFromFunction(function_or_actor, allow_empty_doc=allow_empty_doc, widgets=widgets)
+
+            console.log("Created Node",node)
                 
             # We pass this down to our truly template wrapper that takes the node and transforms it
             template_wrapper = self.template(node, **implementation_details)
@@ -246,46 +136,83 @@ class BaseProvider(Hookable):
 
 
     @abstractmethod
-    async def forward(self, message: MessageModel) -> str:
+    async def forward(self, message: MessageModel) -> None:
         raise NotImplementedError("Please overwrite")
+
+
+    async def on_message(self, message: MessageModel):
+        if isinstance(message, BouncedProvideMessage):
+            logger.info("Received Provide Request")
+            assert message.data.template is not None, "Received Provision that had no Template???"
+            await self.handle_bounced_provide(message)
+
+        elif isinstance(message, BouncedUnprovideMessage):
+            logger.info("Received Unprovide Request")
+            assert message.data.provision is not None, "Received Unprovision that had no Provision???"
+            await self.handle_bounced_unprovide(message)
+
+        else: 
+            raise Exception("Received Unknown Task")
+
+
+    async def handle_bounced_provide(self, message: BouncedProvideMessage):
+        try:
+            await self.on_bounced_provide(message)
+
+            progress = ProvideProgressMessage(data={
+            "level": "INFO",
+            "message": f"Pod Pending"
+            }, meta={"extensions": message.meta.extensions, "reference": message.meta.reference})
+
+            await self.forward(progress)
+        except Exception as e:
+            logger.error(e)
+            critical_error = ProvideCriticalMessage(data={
+            "message": str(e)
+            }, meta={"extensions": message.meta.extensions, "reference": message.meta.reference})
+            await self.forward(critical_error)
+            raise e
+
+    async def handle_bounced_unprovide(self, message: BouncedProvideMessage):
+        try:
+            await self.on_bounced_unprovide(message)
+
+            progress = UnprovideProgressMessage(data={
+            "level": "INFO",
+            "message": f"Pod Unproviding"
+            }, meta={"extensions": message.meta.extensions, "reference": message.meta.reference})
+
+            await self.forward(progress)
+
+        except Exception as e:
+            logger.error(e)
+            critical_error = UnprovideCriticalMessage(data={
+            "message": str(e)
+            }, meta={"extensions": message.meta.extensions, "reference": message.meta.reference})
+
+            await self.forward(critical_error)
 
 
     @hookable("bounced_provide", overwritable=True)
     async def on_bounced_provide(self, message: BouncedProvideMessage):
-        pod, task = await self.provideTemplate(message.meta.reference, message.data.template)
-        self.provisions[message.meta.reference] = task # Run in parallel
+        actorClass = await self.get_actorclass_for_template(message.data.template)
+        console.log(f"[red]Got provision request for {message.data.template} and will entertain {actorClass.__name__}")
+        await self.client.entertainer.entertain(message, actorClass) # Run in parallel
 
-        progress = ProvideProgressMessage(data={
-            "level": "INFO",
-            "message": f"Pod Pending {pod.id}"
-        }, meta={"extensions": message.meta.extensions, "reference": message.meta.reference})
+    @hookable("bounced_unprovide", overwritable=True)
+    async def on_bounced_unprovide(self, message: BouncedUnprovideMessage):
+        console.log(f"[red]Got unprovision. Sending to entertainer")
+        await self.client.entertainer.unentertain(message)
 
-        await self.forward(progress)
+    @hookable("get_actorclass_for_template", overwritable=True)
+    async def get_actorclass_for_template(self, template_id):
+        assert template_id in self.template_actorClass_map, f"We have no Actor stored in our list {template_id}"
+        return self.template_actorClass_map[template_id]
 
-    async def on_bounced_cancel_provide(self, message: BouncedCancelProvideMessage):
-        if message.data.reference in self.tasks: 
-            logger.info("Cancellation for Provision received. Canceling!")
-            provision = self.provisions[message.data.reference]
-            if not provision.done():
-                provision.cancel()
-                #TODO: await self.send_to_connection(progress)
-                logger.warn("Canceled Provision!!")
-
-            #TODO: await self.send_to_connection(progress) if task was already done
-        else:
-            logger.error("Received Cancellation for task that was not in our tasks..")
-
-
-    
-    async def provideTemplate(self, reference: str, template_id: str):
-        assert template_id in self.template_actorClass_map, f"There is no function registered for this template {template_id} not it {self.template_actorClass_map.keys()}"
-            
-        actor = self.template_actorClass_map[template_id]
-        pod = await ACCEPT_GQL.run_async(ward=self.client.main_ward, variables= {"template": template_id, "provision": reference})
-        logger.warn(f"Created {pod}")
-        await self.client.entertainer.entertain(pod, actor)
-        return pod
-
+    def register_actor(self, template_id: str, actorClass: Type[Actor]):
+        assert template_id not in self.template_actorClass_map, f"We cannot register two Actors for the same template {template_id}"
+        self.template_actorClass_map[template_id] = actorClass
+        console.log(f"[red]Registered Actor {actorClass.__name__} for Template {template_id}")
 
     async def provide_async(self):
         while True:

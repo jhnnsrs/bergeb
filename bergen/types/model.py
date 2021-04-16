@@ -29,9 +29,9 @@ class ArnheimModelManager(BaseManager, Generic[ModelType]):
             identifier = self.model.Meta.identifier
         except Exception as e:
             raise ArnheimModelConfigurationError(f"Make soure your Model {self.model.__name__}overwrites Meta identifier: {e}")
-        from bergen.registries.arnheim import get_current_arnheim
+        from bergen.registries.client import get_current_client
 
-        return get_current_arnheim().getWardForIdentifier(identifier=identifier)
+        return get_current_client().getWardForIdentifier(identifier=identifier)
 
     def _call_meta(self, attribute, ward=None, **kwargs):
         from bergen.types.utils import parse_kwargs
@@ -197,8 +197,11 @@ class ArnheimModel(BaseModel, metaclass=ArnheimModelMeta):
             identifier = cls.Meta.identifier
         except Exception as e:
             raise ArnheimModelConfigurationError(f"Make soure your Model {cls.__name__}overwrites Meta identifier: {e}")
-        from bergen.registries.arnheim import get_current_arnheim
-        return get_current_arnheim().getWardForIdentifier(identifier=identifier)
+
+
+        from bergen.registries.client import get_current_client
+
+        return get_current_client().getWardForIdentifier(identifier=identifier)
 
     @classmethod
     def getMeta(cls):

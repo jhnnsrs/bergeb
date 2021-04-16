@@ -1,7 +1,8 @@
+
 from bergen.models import Node, NodeType
 from typing import Callable, Type
-from bergen.types.node.ports.arg import IntArgPort, ModelArgPort
-from bergen.types.node.ports.kwarg import IntKwargPort, ModelKwargPort
+from bergen.types.node.ports.arg import IntArgPort, ModelArgPort, StringArgPort
+from bergen.types.node.ports.kwarg import IntKwargPort, ModelKwargPort, StringKwargPort
 from bergen.types.node.ports.returns import IntReturnPort, ModelReturnPort
 from bergen.types.model import ArnheimModel
 import inspect
@@ -13,15 +14,14 @@ logger = logging.getLogger(__name__)
 
 
 def createNodeFromActor(actor,*args, **kwargs):
-    return createNodeFromFunction(actor.assign, *args, interface=actor.__name__.lower())
+    raise NotImplementedError("No longer supported")
+    #return createNodeFromFunction(actor.assign, *args, interface=actor.__name__.lower())
 
-def createNodeFromFunction(function: Callable, package: str, widgets: dict = {}, allow_empty_doc=False, interface=None):
+def createNodeFromFunction(function: Callable, widgets: dict = {}, allow_empty_doc=False, interface=None):
     is_generator = inspect.isasyncgenfunction(function) or inspect.isgenerator(function)
     logger.info(f"Node is {'Generator' if is_generator else 'Function'}")
 
     sig = signature(function)
-    assert "helper" in sig.parameters or "self" in sig.parameters, "Please provide helper or self as a first argument to your function"
-
     # Generate Args and Kwargs from the Annotation
     args = []
     kwargs = []
@@ -35,11 +35,15 @@ def createNodeFromFunction(function: Callable, package: str, widgets: dict = {},
                 args.append(ModelArgPort.fromParameter(value, the_class, widget=widget))
             if issubclass(the_class, int):
                 args.append(IntArgPort.fromParameter(value, widget=widget))
+            if issubclass(the_class, str):
+                args.append(StringArgPort.fromParameter(value, widget=widget))
         else:
             if issubclass(the_class, ArnheimModel):
                 kwargs.append(ModelKwargPort.fromParameter(value, the_class, widget=widget))
             if issubclass(the_class, int):
                 kwargs.append(IntKwargPort.fromParameter(value, widget=widget))
+            if issubclass(the_class, str):
+                args.append(StringKwargPort.fromParameter(value, widget=widget))
 
 
 
@@ -104,7 +108,6 @@ def createNodeFromFunction(function: Callable, package: str, widgets: dict = {},
 
     return Node.objects.update_or_create(
         name = name,
-        package = package,
         interface = interface or function.__name__,
         description = description,
         args = [arg.serialize() for arg in args],

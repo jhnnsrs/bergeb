@@ -8,7 +8,7 @@ from gql.transport.aiohttp import AIOHTTPTransport
 import logging
 from gql.transport.aiohttp import log as aiohttp_logger
 from gql.transport.requests import RequestsHTTPTransport
-
+from bergen.console import console
 
 aiohttp_logger.setLevel(logging.WARNING)
 import asyncio
@@ -28,8 +28,11 @@ class AIOHttpGraphQLWard(BaseGraphQLWard):
 
     async def run_async(self, the_query: TypedGQL, variables: dict = {}, **kwargs):
         query_node = gql(the_query.query)
-
-        response = await self.transport.execute(query_node, variable_values=variables)
+        try:
+            response = await self.transport.execute(query_node, variable_values=variables)
+        except:
+            console.print_exception(show_locals=True)
+            
         if response.errors:
             raise GraphQLException(f"Ward {self._graphql_endpoint}:" + str(response.errors))
         return the_query.extract(response.data)

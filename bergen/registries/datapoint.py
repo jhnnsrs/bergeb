@@ -5,7 +5,7 @@ from bergen.enums import DataPointType
 from bergen.clients.base import BaseWard
 import logging
 import asyncio
-
+from bergen.console import console
 logger = logging.getLogger(__name__)
 
 datapointregistry = None

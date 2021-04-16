@@ -38,19 +38,16 @@ class Bergen(BaseBergen):
 
         if os.path.isfile(config_path):
             with open(config_path,"r") as file:
-                logger.info("Using local configuration ")
                 config = yaml.load(file, Loader=yaml.FullLoader)
 
                 if "arkitekt" in config:
                     arkitekt_config.update(config["arkitekt"])
-                    print(arkitekt_config)
 
                 if "herre" in config:
                     herre_config.update(config["herre"])
-                    print(herre_config)
 
         else:
-            raise Exception("No configuration file found!")
+            raise Exception("No configuration file found! (please add to the directory or specify config_path")
 
 
         if arkitekt_host : arkitekt_config["port"]= arkitekt_host
@@ -70,9 +67,9 @@ class Bergen(BaseBergen):
         arkitekt_config = ArkitektConfig(**arkitekt_config)
 
 
-        if herre_config.grant_type == GrantType.BACKEND: auth = ArnheimBackendOauth(herre_config, force_new_token=force_new_token)
-        elif herre_config.grant_type == GrantType.IMPLICIT: auth = ImplicitApplication(herre_config, force_new_token=force_new_token)
-        elif herre_config.grant_type == GrantType.PASSWORD: auth = LegacyApplication(herre_config, username=username, password=password, force_new_token=force_new_token)
+        if herre_config.authorization_grant_type == GrantType.BACKEND: auth = ArnheimBackendOauth(herre_config, force_new_token=force_new_token)
+        elif herre_config.authorization_grant_type == GrantType.IMPLICIT: auth = ImplicitApplication(herre_config, force_new_token=force_new_token)
+        elif herre_config.authorization_grant_type == GrantType.PASSWORD: auth = LegacyApplication(herre_config, username=username, password=password, force_new_token=force_new_token)
         else: raise NotImplementedError("Please Specifiy a valid Grant Type")
 
         super().__init__(auth, arkitekt_config, auto_negotiate=True, bind=bind, **kwargs)

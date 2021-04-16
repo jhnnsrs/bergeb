@@ -1,12 +1,10 @@
-from bergen.extenders.pod import PodExtender
 from bergen.types.model import ArnheimModelManager
-from bergen.extenders.user import UserExtender
-from bergen.queries.delayed.node import CREATE_NODE_MUTATION, NODE_FILTER_QUERY, NODE_QUERY, UPDATE_OR_CREATE_NODE
+from bergen.queries.delayed.node import NODE_FILTER_QUERY, NODE_QUERY, UPDATE_OR_CREATE_NODE
 from bergen.queries.delayed.pod import POD_QUERY
 from bergen.extenders.node import NodeExtender
 from bergen.schema import Node as SchemaNode
 from bergen.schema import Pod as SchemaPod
-from bergen.schema import User as SchemaUser
+from bergen.schema import User as User
 from bergen.schema import *
 try:
 	# python 3.8
@@ -35,7 +33,7 @@ class Node(NodeExtender, SchemaNode):
 
 
 
-class Pod(PodExtender, SchemaPod):
+class Pod(SchemaPod):
     __slots__ = ("_loop", "_force_sync", "_postman")
 
     objects = NodeManager()
@@ -45,9 +43,3 @@ class Pod(PodExtender, SchemaPod):
         identifier = "pod"
         get = POD_QUERY
 
-
-class User(UserExtender, SchemaUser):
-
-    class Meta:
-        overwrite_default = True
-        identifier = "user"

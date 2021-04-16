@@ -18,7 +18,8 @@ async def expandInputs(node: Node, args: dict, kwargs: dict) -> dict:
     #assert node.inputs is not None, "Your Query for Nodes seems to not provide any field for inputs, please use that in your get statement"
     #assert len(node.inputs) > 0  is not None, "Your Node seems to not provide any inputs, calling is redundant"
 
-    expanded_args = {}
+
+    expanded_args = []
     for port in node.args:
         if port.key not in args:
             if port.required:
@@ -29,9 +30,9 @@ async def expandInputs(node: Node, args: dict, kwargs: dict) -> dict:
         if port.TYPENAME == TYPENAMES.MODELPORTTYPE:
             modelClass = get_current_matcher().getModelForIdentifier(identifier=port.identifier)
             instance =  await modelClass.asyncs.get(id=args[port.key])
-            expanded_args[port.key] = instance
+            expanded_args.append(instance)
         else:
-            expanded_args[port.key] = args[port.key]
+            expanded_args.append(args[port.key])
 
     expanded_kwargs = {}
     for port in node.kwargs:
@@ -47,9 +48,6 @@ async def expandInputs(node: Node, args: dict, kwargs: dict) -> dict:
             expanded_kwargs[port.key] = instance
         else:
             expanded_kwargs[port.key] = kwargs[port.key]
-
-
-
 
 
     return expanded_args, expanded_kwargs
@@ -79,7 +77,7 @@ async def shrinkOutputs(node: Node, returns: List) -> dict:
 
 
 
-async def shrinkInputs(node: Node, args: List, kwargs: List) -> Tuple[dict, dict]:
+async def shrinkInputs(node: Node, args: List, kwargs: dict) -> Tuple[dict, dict]:
 
     #assert node.inputs is not None, "Your Query for Nodes seems to not provide any field for inputs, please use that in your get statement"
     #assert len(node.inputs) > 0  is not None, "Your Node seems to not provide any inputs, calling is redundant"
@@ -95,8 +93,8 @@ async def shrinkInputs(node: Node, args: List, kwargs: List) -> Tuple[dict, dict
         else:
             shrinked_args[port.key] = arg
 
-
     shrinked_kwargs = {}
+
     for port in node.kwargs:
         if port.key not in kwargs:
             break
@@ -109,11 +107,14 @@ async def shrinkInputs(node: Node, args: List, kwargs: List) -> Tuple[dict, dict
                 shrinked_kwargs[port.key] = kwargs[port.key]
         else:
             shrinked_kwargs[port.key] = kwargs[port.key]
+
+
+
     
     return shrinked_args, shrinked_kwargs
 
 
-async def expandOutputs(node: Node, returns: dict, strict=False) -> List:
+async def expandOutputs(node: Node, returns: list, strict=False) -> List:
 
     #assert node.inputs is not None, "Your Query for Nodes seems to not provide any field for inputs, please use that in your get statement"
     #assert len(node.inputs) > 0  is not None, "Your Node seems to not provide any inputs, calling is redundant"

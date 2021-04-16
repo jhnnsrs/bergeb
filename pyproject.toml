@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "bergen"
-version = "0.3.65"
+version = "0.3.75"
 readme = "README.md"
 homepage = "https://github.com/jhnnsrs/bergen"
 description = "A python client for the Arnheim Framework"
@@ -20,6 +20,7 @@ namegenerator = "^1.0.6"
 nest-asyncio = "^1.5.1"
 docstring-parser= "^0.7.3"
 tqdm = "^4.56.1"
+rich = "^10.1.0"
 
 [tool.poetry.dev-dependencies]
 pytest-aiohttp = "^0.3.0"

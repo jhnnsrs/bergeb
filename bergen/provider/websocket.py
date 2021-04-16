@@ -1,15 +1,16 @@
 
 
 from abc import ABC, abstractmethod
-from bergen.messages.postman.provide import BouncedProvideMessage, ProvideProgressMessage, BouncedCancelProvideMessage
+from bergen.messages import *
 from bergen.messages.utils import expandToMessage
 from bergen.messages.base import MessageModel
-from bergen.provider.base import BaseHelper, BaseProvider
+from bergen.provider.base import BaseProvider
 import logging
 import asyncio
 import websockets
 import json
 import asyncio
+from bergen.console import console
 try:
     from asyncio import create_task
 except ImportError:
@@ -120,9 +121,7 @@ class WebsocketProvider(BaseProvider):
     async def consumer(self):
         logger.warning(" [x] Awaiting Provision Calls")
         async for message in self.connection:
-            logger.info(f"Incoming Provide {message}")
             await self.incoming_queue.put(message)
-
 
     async def producer(self):
         while True:
@@ -130,29 +129,17 @@ class WebsocketProvider(BaseProvider):
             await self.connection.send(message.to_channels())
 
     async def forward(self, message: MessageModel) -> str:
-        await self.send_to_connection(message)
-
-    async def send_to_connection(self, message: MessageModel):
         logger.info(f"Sending {message}")
         await self.outgoing_queue.put(message)
-       
 
     async def workers(self):
         while True:
             message_str = await self.incoming_queue.get()
             message = expandToMessage(json.loads(message_str))
-
-            if isinstance(message, BouncedProvideMessage):
-                logger.info("Received Provide Request")
-                assert message.data.template is not None, "Received Provision that had no Template???"
-                await self.on_bounced_provide(message)
-                
-            elif isinstance(message, BouncedCancelProvideMessage):
-                await self.on_bounced_cancel_provide(message)
-                
-
-            else: raise Exception("Received Unknown Task")
+            logger.info("Message")
+            await self.on_message(message)
             self.incoming_queue.task_done()
+    
 
 
 

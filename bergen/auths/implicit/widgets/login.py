@@ -2,7 +2,7 @@
 from PyQt5 import QtCore
 from PyQt5.QtWidgets import QDialog, QVBoxLayout
 from PyQt5.QtWebEngineWidgets import QWebEngineView
-
+from bergen.console import console
 
 class LoginWindow(QWebEngineView):
     """ A Login window for the OSF """
@@ -14,7 +14,6 @@ class LoginWindow(QWebEngineView):
         self.backend = backend
 
         auth_url, state = self.session.authorization_url(self.backend.auth_url)
-        #print("Generated authorization url: {}".format(auth_url))
 
         self.urlChanged.connect(self.check_URL)
         self.callback = tokenCallback
@@ -28,7 +27,6 @@ class LoginWindow(QWebEngineView):
 
     def check_URL(self, url: QtCore.QUrl):
         url = url.url()
-        #print(url)
         if url.startswith(self.backend.redirect_uri):
             token = self.session.token_from_fragment(url)
             if token: self.callback(token)
@@ -57,7 +55,9 @@ class LoginDialog(QDialog):
     # static method to create the dialog and return (date, time, accepted)
     @staticmethod
     def getToken(backend = None, parent = None):
-        dialog = LoginDialog(backend=backend, parent=parent)
-        result = dialog.exec_()
+        with console.status("[bold green]Authenticating with PyQT Window"):
+            dialog = LoginDialog(backend=backend, parent=parent)
+            result = dialog.exec_()
+            
         token = dialog.token
         return token, result == QDialog.Accepted

@@ -60,18 +60,17 @@ OUTPUTS_FR = """
 
 DETAIL_NODE_FR = """
   name
+  package
+  interface
   id
+  type
 """ + INPUTS_FR + OUTPUTS_FR 
 
 
 NODE_QUERY = DelayedGQL("""
 query Node($id: ID, $package: String, $interface: String){
   node(id: $id, package: $package, interface: $interface){
-    id
-    name
-    image
-""" + INPUTS_FR + """
-""" + OUTPUTS_FR + """
+    """+ DETAIL_NODE_FR +"""
   }
 }
 """)
@@ -101,24 +100,16 @@ CREATE_NODE_MUTATION = DelayedGQL("""
     $name: String!
     $type: NodeTypeInput){
   createNode(description: $description, args: $args, kwargs: $kwargs, returns: $returns, package:$package, interface: $interface, name: $name, type: $type){
-    id
-    name
-    image
-""" + INPUTS_FR + """
-""" + OUTPUTS_FR + """
+    """+ DETAIL_NODE_FR +"""
   }
 }
 """)
 
 
 UPDATE_OR_CREATE_NODE = DelayedGQL("""
-  mutation CreateNodeMutation($description: String!, $args: [ArgPortInput]!, $kwargs: [KwargPortInput]!, $returns: [ReturnPortInput]!, $package: String!, $interface: String!, $name: String!, $type: NodeTypeInput){
-  createNode(description: $description, args: $args, kwargs: $kwargs, returns: $returns, package:$package, interface: $interface, name: $name, type: $type){
-    id
-    name
-    image
-""" + INPUTS_FR + """
-""" + OUTPUTS_FR + """
+  mutation CreateNodeMutation($description: String!, $args: [ArgPortInput]!, $kwargs: [KwargPortInput]!, $returns: [ReturnPortInput]!, $interface: String!, $name: String!, $type: NodeTypeInput){
+  createNode(description: $description, args: $args, kwargs: $kwargs, returns: $returns, interface: $interface, name: $name, type: $type){
+    """+ DETAIL_NODE_FR +"""
   }
 }
 """)

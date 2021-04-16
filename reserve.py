@@ -1,20 +1,39 @@
-from pydantic.utils import truncate
-from bergen.types.node.widgets.querywidget import QueryWidget
-from bergen.schema import ArnheimApplication
+from bergen.monitor.monitor import Monitor
 from bergen.clients.host import Bergen
 from bergen.models import Node
-from typing import Type, TypedDict
 import asyncio
+
+
+async def use(package=None, interface=None) -> Node:
+    return await Node.asyncs.get(package=package, interface=interface)
+
+
+async def stream(node, *args, **kwargs):
+    with Monitor(title="testing"):
+        async with node.reserve(room="sted", auto_provide=True, auto_unprovide=False) as res:
+            async for value in res.stream(*args, **kwargs):
+                res.log("nana", str(value))
+
+            print("Done")
+
+async def assign(node, *args, **kwargs):
+    with Monitor(title="testing"):
+        async with node.reserve(room="sted", auto_provide=True, auto_unprovide=False) as res:
+            return await res.assign(*args, **kwargs)
+
+
 
 
 async def main():
 
-    async with Bergen(name="karl",config_path="tests/configs/implicit.yaml",force_new_token=True):
-        zeries = await Node.asyncs.get(package="fluss", interface="sloppy-cerulean-moose")
+    async with Bergen(config_path="tests/configs/implicit.yaml", force_new_token=True):
 
-        async with zeries.reserve(room="sted", on_progress= lambda x: print(x)) as res:
-            lala = await asyncio.gather(*[res.assign(100,200,z=0) for i in range(1)])
-            print(lala)
+        zeries = await use(package="Fluss", interface="geeky-mauve-greyhound")
+
+        print(await stream(zeries,1))
+            
+
+
 
 
             
@@ -22,7 +41,6 @@ async def main():
 
 if __name__ == "__main__":
 
-
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(main())
-        loop.close()
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(main())
+    loop.close()

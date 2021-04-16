@@ -6,8 +6,8 @@ from bergen.query import TypedGQL
 
 NEGOTIATION_GQL = TypedGQL("""
 
-  mutation Negotiate($clientType: ClientTypeInput!, $name: String) {
-  negotiate(clientType: $clientType, name: $name) {
+  mutation Negotiate($clientType: ClientTypeInput!) {
+  negotiate(clientType: $clientType) {
     timestamp
     extensions
     models {

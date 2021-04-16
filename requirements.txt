@@ -4,3 +4,4 @@ websockets
 pydantic
 pylint
 aiostream
+rich

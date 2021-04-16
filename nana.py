@@ -53,7 +53,6 @@ async def adder(helper, x: int, y: int) -> int:
     Returns:
         int: X + Y
     """
-    print("Hallo0")
     
     return x + y
 

@@ -5,6 +5,7 @@ import requests
 from requests_oauthlib.oauth2_session import OAuth2Session
 from bergen.auths.base import BaseAuthBackend
 from bergen.enums import ClientType
+from bergen.console import console
 
 class ImplicitError(Exception):
     pass
@@ -23,12 +24,14 @@ class LegacyApplication(BaseAuthBackend):
     
     def fetchToken(self, loop=None) -> str:
         # Getting token
-        print(self.client_id)
         self.legacy_app_client =  LegacyApplicationClient(self.client_id, scope=self.scope)
-        if not self.username: self.username = input("Enter your username:    ")
-        if not self.password: self.password = input("Password?               ")
+        console.print("[yellow]Try to avoid authenticating with User and Password. Use Implicit Flow if possible!")
+        if not self.username: self.username = console.input("[green]Enter your [b]Username:               ")
+        if not self.password: self.password = console.input("[green]Now for the [b]Password:              ", password=True)
 
-        token = self.oauth.fetch_token(token_url=self.token_url,
-        username=self.username, password=self.password, client_id=self.client_id,
-        client_secret=self.client_secret)
+        with console.status("[bold green]Authenticating..."):
+            token = self.oauth.fetch_token(token_url=self.token_url,
+            username=self.username, password=self.password, client_id=self.client_id,
+            client_secret=self.client_secret)
+        
         return token

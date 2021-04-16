@@ -23,6 +23,7 @@ class AssignationParams(ArnheimObject):
 
 class ProvisionParams(ArnheimObject):
     provider: Optional[str]
+    auto_unprovide: Optional[bool]
 
 class Avatar(ArnheimObject):
     user: Optional['User']
@@ -130,6 +131,7 @@ class Node(ArnheimModel):
     id: Optional[int]
     name: Optional[str]
     package: Optional[str]
+    interface: Optional[str]
     args: Optional[List[ArgPort]]
     kwargs: Optional[List[KwargPort]]
     returns: Optional[List[ReturnPort]]
