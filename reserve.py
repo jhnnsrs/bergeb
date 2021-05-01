@@ -28,9 +28,10 @@ async def main():
 
     async with Bergen(config_path="tests/configs/implicit.yaml", force_new_token=True):
 
-        zeries = await use(package="Fluss", interface="geeky-mauve-greyhound")
+        zeries = await use(package="Fluss", interface="Image Analysis")
 
-        print(await stream(zeries,1))
+        async for result in zeries.assign(x = 4, y = 6):
+            print(result)
             
 
 
