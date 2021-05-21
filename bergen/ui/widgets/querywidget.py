@@ -37,7 +37,6 @@ class QueryWidget(BaseWidgetMixin, QWidget):
             return
 
         self.current_value = value
-        print(self.current_value)
         if self.on_changed: self.on_changed(value)
 
 

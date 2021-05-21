@@ -72,15 +72,12 @@ class AssignationUI(QDialog):
 
         for key in no_dependency_keys:
             if key in self.keyWidgetMap:
-                print(self.keyWidgetMap)
                 self.keyWidgetMap[key].render(self.keyValuesMap)
     
 
     def onDependencyChanged(self, updatedkey, value):
-        print(updatedkey, value)
         if self.keyValuesMap[updatedkey] == value:
             # No change in dependency, omit
-            print("Ommitting")
             return
         else:
             self.keyValuesMap[updatedkey] = value

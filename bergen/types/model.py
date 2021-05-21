@@ -24,25 +24,16 @@ class ArnheimModelManager(BaseManager, Generic[ModelType]):
         self.meta = meta
         super().__init__()
 
-    def get_ward(self):
-        try:
-            identifier = self.model.Meta.identifier
-        except Exception as e:
-            raise ArnheimModelConfigurationError(f"Make soure your Model {self.model.__name__}overwrites Meta identifier: {e}")
-        from bergen.registries.client import get_current_client
-
-        return get_current_client().getWardForIdentifier(identifier=identifier)
-
-    def _call_meta(self, attribute, ward=None, **kwargs):
+    def _call_meta(self, attribute, **kwargs):
         from bergen.types.utils import parse_kwargs
         method =  getattr(self.meta, attribute, None)
         assert method is not None, f"Please provide the {attribute} parameter in your ArnheimModel meta class "
         typed_gql: TypedGQL = method(self.model)    
-        return typed_gql.run(ward=ward, variables=parse_kwargs(kwargs))
+        return typed_gql.run(variables=parse_kwargs(kwargs))
 
     def __getattr__(self, name: str) -> ModelType:
         def function(**kwargs):
-            return self._call_meta(name, ward=self.get_ward(), **kwargs)
+            return self._call_meta(name, **kwargs)
         return function
 
     def get(self, ward=None, **kwargs) -> ModelType:
@@ -80,17 +71,7 @@ class ArnheimAsyncModelManager(BaseManager, Generic[ModelType]):
     def __init__(self, model: ModelType = None, meta = None) -> None:
         self.model = model
         self.meta = meta
-        super().__init__()
-
-    def get_ward(self):
-        try:
-            identifier = self.model.Meta.identifier
-        except Exception as e:
-            raise ArnheimModelConfigurationError(f"Make soure your Model {self.model.__name__}overwrites Meta identifier: {e}")
-        from bergen.registries.arnheim import get_current_arnheim
-
-
-        return get_current_arnheim().getWardForIdentifier(identifier=identifier)
+        super().__init__() 
 
     async def _call_meta(self, attribute, ward=None, **kwargs):
         from bergen.types.utils import parse_kwargs
@@ -184,9 +165,6 @@ class ArnheimModelMeta(ModelMetaclass):
 
 
 
-
-
-
 class ArnheimModel(BaseModel, metaclass=ArnheimModelMeta):
     TYPENAME: str = Field(None, alias='__typename')
     id: Optional[int]
@@ -198,10 +176,8 @@ class ArnheimModel(BaseModel, metaclass=ArnheimModelMeta):
         except Exception as e:
             raise ArnheimModelConfigurationError(f"Make soure your Model {cls.__name__}overwrites Meta identifier: {e}")
 
-
-        from bergen.registries.client import get_current_client
-
-        return get_current_client().getWardForIdentifier(identifier=identifier)
+        from bergen.registries.ward import get_ward_registry
+        return get_ward_registry().get_ward(identifier=identifier)
 
     @classmethod
     def getMeta(cls):

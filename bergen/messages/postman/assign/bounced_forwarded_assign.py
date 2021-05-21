@@ -19,7 +19,7 @@ class MetaModel(MessageMetaModel):
 class DataModel(MessageDataModel):
     reservation: str
     provision: str # The reservation reference we are going to assign to
-    args: dict
+    args: Optional[list]
     kwargs: Optional[dict]
 
 class BouncedForwardedAssignMessage(MessageModel):

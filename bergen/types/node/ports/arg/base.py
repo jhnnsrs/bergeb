@@ -6,7 +6,7 @@ from bergen.types.node.widgets.base import BaseWidget
 class BaseArgPort:
 
   def __init__(self, widget, key=None, label=None, description=None) -> None:
-      assert isinstance(widget, BaseWidget), "Widget be instance of a subclass of BaseWidget"
+      assert isinstance(widget, BaseWidget) or widget is None, "Widget be instance of a subclass of BaseWidget or None"
       self.type = self.__class__.__name__
       self.key = key
       self.label = label
@@ -17,7 +17,7 @@ class BaseArgPort:
 
   def serialize(self):
       assert self.key is not None, "Please provide at least a key to your Port"
-      widgetFragment = {"widget": self.widget.serialize()} if self.widget is not None else {}
+      widgetFragment = {"widget": self.widget.serialize()} if self.widget is not None else {"widget": None}
       return {
         "type": self.type,
         "key": self.key,

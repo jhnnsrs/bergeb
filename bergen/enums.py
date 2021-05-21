@@ -16,6 +16,7 @@ class ClientType(str, Enum):
     HOST = "HOST"
     CLIENT = "CLIENT"
     PROVIDER = "PROVIDER"
+    POINT = "POINT"
 
 
 class DataPointType(str, Enum):
@@ -24,5 +25,7 @@ class DataPointType(str, Enum):
 
 
 
-class TYPENAMES(str, Enum):
-    MODELPORTTYPE = "ModelPortType"
+class PortTypes(str, Enum):
+    MODEL_ARG_PORT = "ModelArgPort"
+    MODEL_KWARG_PORT = "ModelKwargPort"
+    MODEL_RETURN_PORT = "ModelReturnPort"

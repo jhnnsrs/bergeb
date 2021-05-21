@@ -1,2 +1,2 @@
-from .int import IntReturnPort
-from .model import ModelReturnPort
+from .intport import IntReturnPort
+from .modelport import ModelReturnPort

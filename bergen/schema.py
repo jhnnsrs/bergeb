@@ -1,4 +1,4 @@
-from bergen.enums import HostProtocol, PostmanProtocol, ProviderProtocol
+from bergen.enums import DataPointType, HostProtocol, PostmanProtocol, ProviderProtocol
 from bergen.queries.delayed.pod import POD_QUERY
 from bergen.queries.delayed.template import TEMPLATE_GET_QUERY
 from bergen.extenders.port import ArgPortExtender, KwargPortExtender, ReturnPortExtender
@@ -39,13 +39,27 @@ class User(ArnheimModel):
     class Meta:
         identifier = "user"
 
+class App(ArnheimModel):
+    client_id: Optional[str]
+    name: Optional[str]
+    grant_type: Optional[str]
+
+    class Meta:
+        identifier = "app"
+
 class DataPoint(ArnheimModel):
+    app: Optional[App]
+    user: Optional[User]
     type: Optional[str]
     name: Optional[str]
+    needsNegotiation: Optional[bool]
+    secure: Optional[bool]
     inward: Optional[str]
     outward: Optional[str]
+    distinct: Optional[str]
     port: Optional[int]
     url: Optional[str]
+    distinct: Optional[str]
     models: Optional[List[DataModel]]
 
     class Meta:
@@ -74,12 +88,20 @@ class EntertainerSettings(ArnheimObject):
     type: Optional[HostProtocol]
     kwargs: Optional[dict]
 
+class WardSettings(ArnheimObject):
+    distinct: Optional[str]
+    needsNegotiation: Optional[str]
+    type: Optional[DataPointType]
+    host: Optional[str]
+    port: Optional[int]
+    secure: Optional[bool]
+
 class Transcript(ArnheimObject):
-    extensions: Optional[Any]
     postman: Optional[PostmanSettings]
     host: Optional[EntertainerSettings]
     provider: Optional[ProviderSettings]
     models: Optional[List[DataModel]]
+    wards: Optional[List[WardSettings]]
 
 
 class Provider(ArnheimModel):
@@ -130,6 +152,7 @@ class NodeType(str, Enum):
 class Node(ArnheimModel):
     id: Optional[int]
     name: Optional[str]
+    description: Optional[str]
     package: Optional[str]
     interface: Optional[str]
     args: Optional[List[ArgPort]]

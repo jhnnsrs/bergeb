@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from asyncio.futures import Future
-from bergen.messages.postman.progress import ProgressLevel
+from bergen.messages.postman.log import LogLevel
 from bergen.messages import *
 from bergen.messages.base import MessageModel
 from bergen.postmans.utils import build_assign_message, build_reserve_message, build_unassign_messsage, build_unreserve_messsage
@@ -31,10 +31,9 @@ class ProtocolException(Exception):
 class BasePostman(Hookable):
     """ A Postman takes node requests and translates them to Bergen calls, basic implementations are GRAPHQL and PIKA"""
     
-    def __init__(self, requires_configuration=True, loop=None, client=None, **kwargs) -> None:
+    def __init__(self, client, requires_configuration=True, loop=None,**kwargs) -> None:
         super().__init__(**kwargs)
-        assert loop is not None, "Please provide a Loop to your Postman, Did you forget to call super.init with **kwargs?"
-        self.loop = loop or asyncio.get_event_loop()
+        self.loop = loop or client.loop or asyncio.get_event_loop()
         self.client = client
 
         # Assignments and their Cancellations
@@ -87,11 +86,14 @@ class BasePostman(Hookable):
             else:
                 if reference in self.assignment_progress_functions:
                     function = self.assignment_progress_functions[reference]
-                    function(f"[red]Race Condition! Assignation Return before being Cancelled on the Server. Omitting Result!", level=ProgressLevel.DEBUG)
+                    function(f"[red]Race Condition! Assignation Return before being Cancelled on the Server. Omitting Result!", level=LogLevel.DEBUG)
 
-        elif isinstance(message, AssignProgressMessage):
-            function = self.assignment_progress_functions[reference]
-            function(message.data.message, level=message.data.level)
+        elif isinstance(message, AssignLogMessage):
+            if reference in self.assignment_progress_functions:
+                function = self.assignment_progress_functions[reference]
+                function(message.data.message, level=message.data.level)
+            else:
+                logger.warning(f"Received unwanted Progress {message}")
 
         elif isinstance(message, AssignCriticalMessage):
             future = self.assignments.pop(reference)
@@ -103,9 +105,12 @@ class BasePostman(Hookable):
             future = self.unassignments.pop(reference)
             future.set_result(message)
 
-        elif isinstance(message, UnassignProgressMessage):
-            function = self.unassignment_progress_functions[reference]
-            function(message.data.message, level=message.data.level)
+        elif isinstance(message, UnassignLogMessage):
+            if reference in self.unassignment_progress_functions:
+                function = self.unassignment_progress_functions[reference]
+                function(message.data.message, level=message.data.level)
+            else:
+                logger.warning(f"Received unwanted Progress {message}")
 
         elif isinstance(message, UnassignCriticalMessage):
             future = self.unassignments.pop(reference)
@@ -117,9 +122,12 @@ class BasePostman(Hookable):
             future = self.reservations.pop(reference)
             future.set_result(message)
 
-        elif isinstance(message, ReserveProgressMessage):
-            function = self.reservations_progress_functions[reference]
-            function(message.data.message, level=message.data.level)
+        elif isinstance(message, ReserveLogMessage):
+            if reference in self.reservations_progress_functions:
+                function = self.reservations_progress_functions[reference]
+                function(message.data.message, level=message.data.level)
+            else:
+                logger.warning(f"Received unwanted Progress {message}")
 
         elif isinstance(message, ReserveCriticalMessage):
             future = self.reservations.pop(reference)
@@ -131,9 +139,13 @@ class BasePostman(Hookable):
             future = self.unreservations.pop(reference)
             future.set_result(message)
 
-        elif isinstance(message, UnreserveProgressMessage):
-            function = self.unreservations_progress_functions[reference]
-            function(message.data.message, level=message.data.level)
+        elif isinstance(message, UnreserveLogMessage):
+            if reference in self.unreservations_progress_functions:
+                function = self.unreservations_progress_functions[reference]
+                function(message.data.message, level=message.data.level)
+            else:
+                logger.warning(f"Received unwanted Progress {message}")
+
 
         elif isinstance(message, UnreserveCriticalMessage):
             future = self.unreservations.pop(reference)
@@ -232,7 +244,7 @@ class BasePostman(Hookable):
 
 
         except asyncio.CancelledError as e:
-            if on_progress: on_progress(f"[red]Cancelled Assignment {assign_reference}", level=ProgressLevel.DEBUG)
+            if on_progress: on_progress(f"[red]Cancelled Assignment {assign_reference}", level=LogLevel.DEBUG)
             try:
                 unassign = await self.unassign(assign_reference, bounced=bounced)
             except:
@@ -261,7 +273,7 @@ class BasePostman(Hookable):
             return await future
 
         except asyncio.CancelledError as e:
-            if on_progress: on_progress(f"[red]Cancelled Unreservation {unreserve_reference}", level=ProgressLevel.DEBUG)
+            if on_progress: on_progress(f"[red]Cancelled Unreservation {unreserve_reference}", level=LogLevel.DEBUG)
             raise e
 
 

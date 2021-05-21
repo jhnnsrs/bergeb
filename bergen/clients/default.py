@@ -1,9 +1,10 @@
+from bergen.auths.code.app import AuthorizationCodeApplication
 from pydantic.main import BaseModel
 from bergen.auths.legacy.app import LegacyApplication
 from bergen.auths.backend.app import ArnheimBackendOauth
 from bergen.auths.implicit.app import ImplicitApplication
-from bergen.clients.base import ArkitektConfig, BaseBergen
-from bergen.auths.types import GrantType, HerreConfig
+from bergen.clients.base import BaseBergen
+from bergen.config.types import GrantType, HerreConfig, ArkitektConfig
 import os
 import yaml
 import logging
@@ -67,7 +68,8 @@ class Bergen(BaseBergen):
         arkitekt_config = ArkitektConfig(**arkitekt_config)
 
 
-        if herre_config.authorization_grant_type == GrantType.BACKEND: auth = ArnheimBackendOauth(herre_config, force_new_token=force_new_token)
+        if herre_config.authorization_grant_type == GrantType.CLIENT_CREDENTIALS: auth = ArnheimBackendOauth(herre_config, force_new_token=force_new_token)
+        elif herre_config.authorization_grant_type == GrantType.AUHORIZATION_CODE: auth = AuthorizationCodeApplication(herre_config, force_new_token=force_new_token)
         elif herre_config.authorization_grant_type == GrantType.IMPLICIT: auth = ImplicitApplication(herre_config, force_new_token=force_new_token)
         elif herre_config.authorization_grant_type == GrantType.PASSWORD: auth = LegacyApplication(herre_config, username=username, password=password, force_new_token=force_new_token)
         else: raise NotImplementedError("Please Specifiy a valid Grant Type")

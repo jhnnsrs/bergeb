@@ -1,25 +1,21 @@
 
-from abc import ABC, abstractmethod
-from pydantic.main import BaseModel
-
-from requests.models import Response
-from bergen.enums import ClientType
-import shelve
-import os
-import requests
-import logging
-from .types import User, HerreConfig
+from bergen.schemas.herre.types import Application, User
+from bergen.config.types import HerreConfig
 import json
+import logging
+import os
+import shelve
+from abc import ABC, abstractmethod
+import requests
+
+
 logger = logging.getLogger(__name__)
+
 from bergen.console import console
 
 
 class AuthError(Exception):
     pass
-
-class Application(BaseModel):
-    name: str
-    client_id: str
 
 
 
@@ -29,6 +25,8 @@ class BaseAuthBackend(ABC):
     def __init__(self, config: HerreConfig, token_url="o/token/", authorize_url="o/authorize/", check_endpoint="auth/", force_new_token=False) -> None:
         # Needs to be set for oauthlib
         os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "0" if config.secure else "1"
+        if not config.secure: console.log("Using Insecure Oauth2 Protocol.. Please only for local and debug deployments")
+
 
         self.config = config
         self.base_url = f'{"https" if config.secure else "http"}://{config.host}:{config.port}/'
@@ -83,14 +81,14 @@ class BaseAuthBackend(ABC):
         return self._user
 
     @property
-    def access_token(self):
+    def access_token(self) -> str:
         if not self._accesstoken:
             self.getToken()
         
         return self._accesstoken
 
     @property
-    def user(self):
+    def user(self) -> User:
         if not self._user:
             self.getUser()
 
@@ -100,7 +98,7 @@ class BaseAuthBackend(ABC):
     def application(self) -> Application:
         if not self._application:
             self.getToken()
-
+            
         return self._application
 
 
@@ -109,6 +107,8 @@ class BaseAuthBackend(ABC):
             if self.token is None:
                 try:
                     self.token = self.fetchToken()
+                except ConnectionResetError:
+                    raise Exception(f"We couldn't connect to the Herre instance at {self.base_url}")     
                 except:
                     logger.error(f"Couldn't fetch Token with config {self.config}")
                     raise
@@ -116,14 +116,15 @@ class BaseAuthBackend(ABC):
                 with shelve.open(self.db_path) as cfg:
                     cfg['token'] = self.token
 
+
             response = requests.get(self.check_url, headers={"Authorization": f"Bearer {self.token['access_token']}"})
 
-
-
             if response.status_code != 200:
-                self.token == None
-                self.fetchToken()
+                self.token = self.fetchToken()
+                response = requests.get(self.check_url, headers={"Authorization": f"Bearer {self.token['access_token']}"})
 
+
+            assert response.status_code == 200, "Was not able to get a valid token"
             self._application = Application(**json.loads(response.content))
             self._accesstoken =  self.token["access_token"]
 

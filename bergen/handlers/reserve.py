@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Dict
 from bergen.messages.postman.reserve.reserve_critical import ReserveCriticalMessage
 from bergen.schema import Template
 from bergen.messages.postman.assign.assign_done import AssignDoneMessage
@@ -28,8 +28,10 @@ class ReserveHandler(ContractHandler[BouncedForwardedReserveMessage]):
         return self.message.data.template
 
     @property
-    def context(self) -> Any:
-        assert self.context_set, "Context was never set, no sense in accessing it..."
+    def context(self) -> Dict:
+        if self.context_set is False:
+            console.log("Context was never set, no sense in accessing it...")
+            return {}
         return self.active_context   
 
 

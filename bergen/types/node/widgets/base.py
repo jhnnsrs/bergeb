@@ -18,6 +18,6 @@ class BaseWidget:
 
       }
 
-  def params(self, port):
+  def params(self):
       return {}
 

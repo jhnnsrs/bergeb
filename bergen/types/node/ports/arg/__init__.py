@@ -1,3 +1,3 @@
-from .int import IntArgPort
-from .model import ModelArgPort
-from .string import StringArgPort
+from .intport import IntArgPort
+from .modelport import ModelArgPort
+from .stringport import StringArgPort

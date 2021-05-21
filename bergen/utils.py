@@ -2,7 +2,7 @@ import re
 from typing import List, Tuple
 from bergen.types.model import ArnheimModel
 from bergen.registries.matcher import get_current_matcher
-from bergen.enums import TYPENAMES
+from bergen.enums import PortTypes
 from bergen.schema import Node
 import logging
 
@@ -13,26 +13,20 @@ class ExpansionError(Exception):
 
 
 
-async def expandInputs(node: Node, args: dict, kwargs: dict) -> dict:
+async def expandInputs(node: Node, args: list, kwargs: dict) -> dict:
 
     #assert node.inputs is not None, "Your Query for Nodes seems to not provide any field for inputs, please use that in your get statement"
     #assert len(node.inputs) > 0  is not None, "Your Node seems to not provide any inputs, calling is redundant"
 
-
     expanded_args = []
-    for port in node.args:
-        if port.key not in args:
-            if port.required:
-                raise ExpansionError(f"We couldn't expand {port.key} because it wasn't provided by our Args, wrong assignation!!!")
-            else:
-                break
-
-        if port.TYPENAME == TYPENAMES.MODELPORTTYPE:
+    for arg, port in zip(args, node.args):
+        if port.TYPENAME == PortTypes.MODEL_ARG_PORT:
             modelClass = get_current_matcher().getModelForIdentifier(identifier=port.identifier)
-            instance =  await modelClass.asyncs.get(id=args[port.key])
+            instance =  await modelClass.asyncs.get(id=arg)
             expanded_args.append(instance)
         else:
-            expanded_args.append(args[port.key])
+            expanded_args.append(arg)
+
 
     expanded_kwargs = {}
     for port in node.kwargs:
@@ -42,9 +36,9 @@ async def expandInputs(node: Node, args: dict, kwargs: dict) -> dict:
             else:
                 break
 
-        if port.TYPENAME == TYPENAMES.MODELPORTTYPE:
+        if port.TYPENAME == PortTypes.MODEL_KWARG_PORT:
             modelClass = get_current_matcher().getModelForIdentifier(identifier=port.identifier)
-            instance =  await modelClass.asyncs.get(id=args[port.key])
+            instance =  await modelClass.asyncs.get(id=kwargs[port.key])
             expanded_kwargs[port.key] = instance
         else:
             expanded_kwargs[port.key] = kwargs[port.key]
@@ -54,7 +48,7 @@ async def expandInputs(node: Node, args: dict, kwargs: dict) -> dict:
 
 
 
-async def shrinkOutputs(node: Node, returns: List) -> dict:
+async def shrinkOutputs(node: Node, returns: list) -> list:
 
     #assert node.inputs is not None, "Your Query for Nodes seems to not provide any field for inputs, please use that in your get statement"
     #assert len(node.inputs) > 0  is not None, "Your Node seems to not provide any inputs, calling is redundant"
@@ -65,7 +59,7 @@ async def shrinkOutputs(node: Node, returns: List) -> dict:
 
     assert len(node.returns) == len(returns), "Returns do not conform to Node definition"
     for port, item in zip(node.returns, returns):
-        if port.TYPENAME == TYPENAMES.MODELPORTTYPE:
+        if port.TYPENAME == PortTypes.MODEL_RETURN_PORT:
             if isinstance(item, ArnheimModel):
                 shrank_returns.append(item.id)
             else:
@@ -77,21 +71,21 @@ async def shrinkOutputs(node: Node, returns: List) -> dict:
 
 
 
-async def shrinkInputs(node: Node, args: List, kwargs: dict) -> Tuple[dict, dict]:
+async def shrinkInputs(node: Node, args: list, kwargs: dict) -> Tuple[dict, dict]:
 
     #assert node.inputs is not None, "Your Query for Nodes seems to not provide any field for inputs, please use that in your get statement"
     #assert len(node.inputs) > 0  is not None, "Your Node seems to not provide any inputs, calling is redundant"
 
-    shrinked_args = {}
+    shrinked_args = []
     for arg, port in zip(args, node.args):
-        if port.TYPENAME == TYPENAMES.MODELPORTTYPE:
+        if port.TYPENAME == PortTypes.MODEL_ARG_PORT:
             instance = arg
             if isinstance(instance, ArnheimModel):
-                shrinked_args[port.key] = arg.id
+                shrinked_args.append(arg.id)
             else:
-                shrinked_args[port.key] = arg
+                raise Exception("You didnt provide a model")
         else:
-            shrinked_args[port.key] = arg
+            shrinked_args.append(arg)
 
     shrinked_kwargs = {}
 
@@ -99,7 +93,7 @@ async def shrinkInputs(node: Node, args: List, kwargs: dict) -> Tuple[dict, dict
         if port.key not in kwargs:
             break
 
-        if port.TYPENAME == TYPENAMES.MODELPORTTYPE:
+        if port.TYPENAME == PortTypes.MODEL_KWARG_PORT:
             instance = kwargs[port.key]
             if isinstance(instance, ArnheimModel):
                 shrinked_kwargs[port.key] = kwargs[port.key].id
@@ -122,7 +116,7 @@ async def expandOutputs(node: Node, returns: list, strict=False) -> List:
     expanded_returns = []
     assert len(node.returns) == len(returns), "Returns do not conform to Node definition. Someone might have intercepted a Request"
     for port, item in zip(node.returns, returns):
-        if port.TYPENAME == TYPENAMES.MODELPORTTYPE:
+        if port.TYPENAME == PortTypes.MODEL_RETURN_PORT:
             try:
                 modelClass = get_current_matcher().getModelForIdentifier(identifier=port.identifier)
                 instance =  await modelClass.asyncs.get(id=item)
@@ -134,7 +128,12 @@ async def expandOutputs(node: Node, returns: list, strict=False) -> List:
         else:
             expanded_returns.append(item)
 
-    return expanded_returns
+    if len(expanded_returns) == 1:
+        # Single outputs are returned like that
+        return expanded_returns[0]
+    
+    else:
+        return expanded_returns
 
 
 

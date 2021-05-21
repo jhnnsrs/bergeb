@@ -1,4 +1,6 @@
 
+from bergen.clients.base import BaseBergen
+from websockets.exceptions import ConnectionClosedError
 from bergen.messages.base import MessageModel
 from bergen.messages.utils import expandToMessage
 import json
@@ -24,14 +26,14 @@ logger = logging.getLogger()
 class WebsocketEntertainer(BaseEntertainer):
     ''' Is a mixin for Our Bergen '''
 
-    def __init__(self, host= None, port= None, protocol=None, auto_reconnect=True, auth: dict= None, **kwargs) -> None:
-        super().__init__(**kwargs)
-        self.websocket_host = host
-        self.websocket_port = port
+    def __init__(self, client: BaseBergen, host= None, port= None, protocol=None, auth: dict= None, **kwargs) -> None:
+        super().__init__(client, **kwargs)
+        self.websocket_host = host or client.config.host
+        self.websocket_port = port or client.config.port
         self.websocket_protocol = protocol
         self.token = auth["token"]
         
-        self.auto_reconnect= auto_reconnect
+        self.auto_reconnect= True
         self.allowed_retries = 2
         self.current_retries = 0
 
@@ -62,16 +64,18 @@ class WebsocketEntertainer(BaseEntertainer):
             await self.connect_websocket()
         except Exception as e:
 
-            logger.error(f"Entertainer Connection failed {e}")
+            logger.error(f"[red] Connection attempt as Entertainer failed")
             self.current_retries += 1
-            if self.current_retries < self.allowed_retries and self.auto_reconnect:
+            if self.auto_reconnect:
                 sleeping_time = (self.current_retries + 1)
-                logger.info(f"Retrying in {sleeping_time} seconds")
+                console.print(f"[red] Trying to Reconnect as Entertainer in {sleeping_time} seconds")
                 await asyncio.sleep(sleeping_time)
                 await self.startup()
             else:
-                logger.error("No reconnecting attempt envisioned. Shutting Down!")
-                return
+                console.print("[red] Entertainer: No reconnecting attempt envisioned. Shutting Down!")
+                console.print_exception()
+
+        console.print("[red] Successfully established Entertainer Connection")
 
         self.consumer_task = create_task(
             self.consumer()
@@ -92,6 +96,17 @@ class WebsocketEntertainer(BaseEntertainer):
 
         logger.error(f"Lost connection inbetween everything :( {[ task.exception() for task in done]}")
         logger.error(f'Reconnecting')
+
+        try:
+            for task in done:
+                if task.exception():
+                    raise task.exception()
+                    
+        except ConnectionClosedError:
+            console.print("[red] Entertainer Connection was closed. Trying Reconnect")
+        except:
+            console.print_exception()
+            
 
         for task in self.pending:
             task.cancel()

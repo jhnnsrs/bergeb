@@ -39,9 +39,10 @@ class Reservation:
             self.on_progress = lambda message, level: self.log(f"[magenta]{level}", message) if self.monitor.progress else None
         else:
             self.log = lambda level, message: logger.info(message)
-            self.on_progress = False
+            self.on_progress = None
 
 
+        self.in_sync = False
         self.loop = loop or asyncio.get_event_loop()
         # Status
         self.running = False
@@ -74,15 +75,17 @@ class Reservation:
 
         return Panel(columns, title="Reservation")
 
-    async def assign(self, *args, **kwargs):
+
+    async def assign_async(self, *args, bypass_shrink=False, bypass_expand=False, **kwargs):
         assert self.node.type == NodeType.FUNCTION, "You cannot assign to a Generator Node, use the stream Method!"
         if self.critical_error is not None:
             
             self.log("[red]ASSIGN",f"Contract is broken and we can not assign. Exiting!")
         try:
-            shrinked_args, shrinked_kwargs = await shrinkInputs(self.node, args, kwargs)
+            shrinked_args, shrinked_kwargs = await shrinkInputs(self.node, args, kwargs) if not bypass_shrink else (args, kwargs)
             return_message = await self._postman.assign(self.reservation, shrinked_args, shrinked_kwargs=shrinked_kwargs, on_progress=self.on_progress, bounced=self.bounced)
-            return await expandOutputs(self.node, return_message.data.returns)
+            outs = await expandOutputs(self.node, return_message.data.returns) if not bypass_expand else return_message.data.returns
+            return outs
 
         except AssignmentException as e:
             self.log("[red]ASSIGN", str(e))
@@ -91,20 +94,24 @@ class Reservation:
             raise e
 
 
+    
 
-    async def stream(self, *args, **kwargs):
+
+
+    async def stream(self, *args, bypass_shrink=False, bypass_expand=False, **kwargs):
         assert self.node.type == NodeType.GENERATOR, "You cannot stream a Function Node, use the assign Method!"
         if self.critical_error is not None:
             self.log("[red]ASSIGN",f"Contract is broken and we can not assign. Exiting!")
         try:
-            shrinked_args, shrinked_kwargs = await shrinkInputs(self.node, args, kwargs)
+            shrinked_args, shrinked_kwargs = await shrinkInputs(self.node, args, kwargs) if not bypass_shrink else (args, kwargs) 
             async for message in self._postman.assign_stream(self.reservation, shrinked_args, serialized_kwargs=shrinked_kwargs, with_progress=True, bounced=self.bounced):
 
                 if isinstance(message, AssignYieldsMessage):
-                    yield await expandOutputs(self.node, message.data.returns)
+                    outs = await expandOutputs(self.node, message.data.returns) if not bypass_expand else message.data.returns
+                    yield outs
 
                 if isinstance(message, AssignProgressMessage):
-                    self.on_progress(message.data.message, message.data.level)
+                    if self.on_progress: self.on_progress(message.data.message, message.data.level)
                 
                 if isinstance(message, AssignCriticalMessage):
                     raise AssignmentException(message.data.type + message.data.message)
@@ -193,6 +200,25 @@ class Reservation:
                 self.log("[green]EXIT", "Gently Exiting Reservation")
             except Exception as e:
                 self.log(f"[red]CRITICAL", f"Exitigin with {str(e)}")
+    
+    def assign(self, *args, bypass_shrink=False, bypass_expand=False, **kwargs):
+        if self.in_sync:
+            return self.loop.run_until_complete(self.assign_async(*args, bypass_shrink=False, bypass_expand=False, **kwargs))
+        else:
+            return self.assign_async(*args, bypass_shrink=False, bypass_expand=False, **kwargs)
+
+    def __enter__(self):
+        self.in_sync = True
+        future = self.loop.run_until_complete(self.__aenter__())
+        return future
+
+    def __exit__(self, *args, **kwargs):
+        return  self.loop.run_until_complete(self.__aexit__(*args, **kwargs))
+
+
+
+    
+
 
 
 

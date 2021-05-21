@@ -17,8 +17,6 @@ class Connector(ABC):
         await self.connection.forward(message)
 
 
-
-
 class ContractHandler(Generic[T]):
 
     def __init__(self, message: T, connection: Connector) -> None:

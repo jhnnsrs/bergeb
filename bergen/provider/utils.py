@@ -1,5 +1,5 @@
-
-from bergen.models import Node, NodeType
+from bergen.models import Node
+from bergen.schema import NodeType
 from typing import Callable, Type
 from bergen.types.node.ports.arg import IntArgPort, ModelArgPort, StringArgPort
 from bergen.types.node.ports.kwarg import IntKwargPort, ModelKwargPort, StringKwargPort
@@ -13,11 +13,12 @@ from docstring_parser import parse
 logger = logging.getLogger(__name__)
 
 
+
 def createNodeFromActor(actor,*args, **kwargs):
     raise NotImplementedError("No longer supported")
     #return createNodeFromFunction(actor.assign, *args, interface=actor.__name__.lower())
 
-def createNodeFromFunction(function: Callable, widgets: dict = {}, allow_empty_doc=False, interface=None):
+def parseFunctionToDict(function: Callable, widgets: dict = {}, allow_empty_doc=False, interface=None):
     is_generator = inspect.isasyncgenfunction(function) or inspect.isgenerator(function)
     logger.info(f"Node is {'Generator' if is_generator else 'Function'}")
 
@@ -32,18 +33,18 @@ def createNodeFromFunction(function: Callable, widgets: dict = {}, allow_empty_d
 
         if value.default == Parameter.empty: # Non default parameters are args
             if issubclass(the_class, ArnheimModel):
-                args.append(ModelArgPort.fromParameter(value, the_class, widget=widget))
+                args.append(ModelArgPort.fromParameter(value, the_class.getMeta(), widget=widget))
             if issubclass(the_class, int):
                 args.append(IntArgPort.fromParameter(value, widget=widget))
             if issubclass(the_class, str):
                 args.append(StringArgPort.fromParameter(value, widget=widget))
         else:
             if issubclass(the_class, ArnheimModel):
-                kwargs.append(ModelKwargPort.fromParameter(value, the_class, widget=widget))
+                kwargs.append(ModelKwargPort.fromParameter(value, the_class.getMeta(), widget=widget))
             if issubclass(the_class, int):
                 kwargs.append(IntKwargPort.fromParameter(value, widget=widget))
             if issubclass(the_class, str):
-                args.append(StringKwargPort.fromParameter(value, widget=widget))
+                kwargs.append(StringKwargPort.fromParameter(value, widget=widget))
 
 
 
@@ -63,7 +64,7 @@ def createNodeFromFunction(function: Callable, widgets: dict = {}, allow_empty_d
     except AttributeError:
         # Once here we should have only classes... lets see about that
         if issubclass(function_output, ArnheimModel):
-                returns.append(ModelReturnPort(function_output, key=function_output.__name__))
+                returns.append(ModelReturnPort(function_output.getMeta(), key=function_output.__name__))
         if issubclass(function_output, int):
                 returns.append(IntReturnPort(key=function_output.__name__))
 
@@ -86,7 +87,7 @@ def createNodeFromFunction(function: Callable, widgets: dict = {}, allow_empty_d
     if docstring.returns:
         return_description = docstring.returns.description
         seperated_list = return_description.split(",")
-        assert len(returns) == len(seperated_list), "Length of Description and Returns not Equal: If you provide a Return Annotation make sure you seperate the description for each port with ','"
+        assert len(returns) == len(seperated_list), f"Length of Description and Returns not Equal: If you provide a Return Annotation make sure you seperate the description for each port with ',' Return Description {return_description} Returns: {returns}"
         for index, doc in enumerate(seperated_list):
             returns[index].description = doc
 
@@ -106,12 +107,17 @@ def createNodeFromFunction(function: Callable, widgets: dict = {}, allow_empty_d
     logger.info(f"Creating Kwargs Ports: {[str(port.key) for  port in kwargs]}")
     logger.info(f"Creating Returns Ports: {[str(port.key) for  port in returns]}")
 
-    return Node.objects.update_or_create(
-        name = name,
-        interface = interface or function.__name__,
-        description = description,
-        args = [arg.serialize() for arg in args],
-        kwargs = [kwarg.serialize() for kwarg in kwargs],
-        returns = [re.serialize() for re in returns],
-        type = NodeType.GENERATOR if is_generator else NodeType.FUNCTION
-    )
+    return {
+        "name": name,
+        "interface": interface or function.__name__,
+        "description" : description,
+        "args" : [arg.serialize() for arg in args],
+        "kwargs" : [kwarg.serialize() for kwarg in kwargs],
+        "returns" : [re.serialize() for re in returns],
+        "type" : NodeType.GENERATOR if is_generator else NodeType.FUNCTION
+    }
+
+
+def createNodeFromFunction(function: Callable, widgets: dict = {}, allow_empty_doc=False, interface=None):
+    node_dict = parseFunctionToDict(function, widgets=widgets, allow_empty_doc=allow_empty_doc, interface=interface)
+    return Node.objects.update_or_create(**node_dict)

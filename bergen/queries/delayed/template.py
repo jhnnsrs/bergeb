@@ -16,3 +16,17 @@ query Template($id: ID,){
   }
 }
 """)
+
+
+UPDATE_OR_CREATE_TEMPLATE = DelayedGQL("""
+mutation CreateTemplate($node: ID!, $params: GenericScalar){
+  createTemplate(node: $node, params: $params){
+    id
+    node {
+        """
+        + DETAIL_NODE_FR+
+        """
+    }
+  }
+}
+""")

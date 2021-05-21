@@ -1,6 +1,9 @@
 import asyncio
 from abc import ABC, abstractmethod
 from asyncio.futures import Future
+from bergen.messages.postman.log import LogLevel
+from bergen.handlers.unprovide import UnprovideHandler
+from bergen.clients.base import BaseBergen
 from bergen.handlers.base import Connector
 from bergen.messages import *
 from bergen.hookable.base import Hookable
@@ -15,15 +18,22 @@ from bergen.console import console
 
 logger = logging.getLogger(__name__)
 
+class ProtocolError(Exception):
+    pass
+
+class TaskAlreadyDoneError(ProtocolError):
+    pass
+
+
 
 
 class BaseEntertainer(Hookable):
     ''' Is a mixin for Our Bergen '''
-    def __init__(self, raise_exceptions_local=False, client = None, loop=None, **kwargs) -> None:
+    def __init__(self, client: BaseBergen, raise_exceptions_local=False, loop=None, **kwargs) -> None:
         super().__init__(**kwargs)
         self.provisions = {}
         self.raise_exceptions_local = raise_exceptions_local
-        self.loop = loop or asyncio.get_event_loop()
+        self.loop = loop or client.loop or asyncio.get_event_loop()
         self.client = client
 
         self.connector = Connector(self)
@@ -158,38 +168,40 @@ class BaseEntertainer(Hookable):
         self.template_id_actorClass_map[template_id] = actorClass
 
 
-    async def unentertain(self, bounced_unprovide: BouncedUnprovideMessage, from_arkitekt=False):
-        if from_arkitekt: logger.info("Cancellation invoked by Arkitekt")
+    async def unentertain(self, bounced_unprovide: BouncedUnprovideMessage):
+        unprovide_handler = UnprovideHandler(bounced_unprovide, self.connector)
 
-        provision_reference = bounced_unprovide.data.provision
-        deactivation_task = asyncio.create_task(self.deactivateProvision(bounced_unprovide))
-        deactivation_task.add_done_callback(print)   
+        try:
+            provision_reference = bounced_unprovide.data.provision 
+            assert provision_reference in self.provision_actor_run_map, "We dont entertain this provision"
+            task = self.provision_actor_run_map[provision_reference]
 
-        task = self.provision_actor_run_map[provision_reference]
+            if not task.done():
+                await unprovide_handler.pass_log("Cancelling", level=LogLevel.INFO)
+                task.cancel()
+                await unprovide_handler.pass_done()
+            else:
+                raise TaskAlreadyDoneError("Task was already done")
 
-        if not task.done():
-            logger.info("Cancelling Task")
-            task.cancel()
-
-
+            
+        except ProtocolException as e:
+            console.print_exception()
+            await unprovide_handler.pass_error(e)
+        except Exception as e:
+            console.print_exception()
+            await unprovide_handler.pass_critical(e)
         
         
         # THIS Comes form the Arkitekt Platform
 
     
-    async def entertain(self, bounced_provide: BouncedProvideMessage, actorClass: Type[Actor], from_arkitekt=False):
+    async def entertain(self, bounced_provide: BouncedProvideMessage, actorClass: Type[Actor]):
         ''' Takes an instance of a pod, asks arnheim to activate it and accepts requests on it,
         cancel this task to unprovide your local implementatoin '''
-        if from_arkitekt: logger.info("Entertainment invoked by Arkitekt")
-
         provision_reference = bounced_provide.meta.reference # We register Actors unter its provision
         actor = actorClass(self.connector)
 
         try:
-            # Activate Provison , will return
-            activation_task = asyncio.create_task(self.activateProvision(bounced_provide))
-            activation_task.add_done_callback(print)
-
             self.provision_actor_map[provision_reference] = actor
             self.provision_actor_queue_map[provision_reference] = actor.queue
             run_task = asyncio.create_task(actor.run(bounced_provide))

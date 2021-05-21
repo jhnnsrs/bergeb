@@ -1,4 +1,6 @@
 from asyncio.tasks import ensure_future
+
+from websockets.exceptions import ConnectionClosedError
 from bergen.messages import *
 from bergen.messages.utils import expandToMessage 
 from typing import Callable
@@ -48,11 +50,12 @@ class Channel:
 class WebsocketPostman(BasePostman):
     type = "websocket"
 
-    def __init__(self, port= None, protocol = None, host= None, auth= None, **kwargs) -> None:
+    def __init__(self, client, port= None, protocol = None, host= None, auth= None, **kwargs) -> None:
+        super().__init__(client, **kwargs)
         self.token = auth["token"]
-        self.port = port
+        self.port = port or client.config.port
         self.protocol = protocol
-        self.host = host
+        self.host = host or client.config.host
         self.connection = None      
         self.channel = None         
         self.callback_queue = ''
@@ -61,7 +64,7 @@ class WebsocketPostman(BasePostman):
         self.progresses = {}
 
         # Retry logic
-        self.allowed_retries = 2
+        self.auto_reconnect = True
         self.current_retries = 0
 
         # Result and Stream Function
@@ -72,14 +75,19 @@ class WebsocketPostman(BasePostman):
         self.progresses = {}  # Also queues
         self.pending = []
 
+        self.receiving_task = None
+        self.sending_task = None
+        self.callback_task = None
+
 
         self.assign_routing = "assignation_request"
-        super().__init__(**kwargs)
 
     async def connect(self):
         self.callback_queue = asyncio.Queue()
         self.progress_queue = asyncio.Queue()
         self.send_queue = asyncio.Queue()
+
+        
 
 
         self.tasks = []
@@ -102,22 +110,27 @@ class WebsocketPostman(BasePostman):
 
         try:
             await self.startup_task
+
         except asyncio.CancelledError:
             logger.info("Postman disconnected")
 
     async def startup(self):
+
         try:
             await self.connect_websocket()
         except Exception as e:
-            logger.debug(e)
+            console.print("[green] Connection attempt as Postman failed")
             self.current_retries += 1
-            if self.current_retries < self.allowed_retries:
+            self.current_retries += 1
+            if self.auto_reconnect:
                 sleeping_time = (self.current_retries + 1)
-                logger.error(f"Connection to Arkitekt Failed: Trying again in {sleeping_time} seconds.")
+                console.print(f"[green] Trying to Reconnect as Postman in {sleeping_time} seconds")
                 await asyncio.sleep(sleeping_time)
                 await self.startup()
             else:
                 return
+
+        console.print("[green] Successfully established Postman Connection")
 
         self.receiving_task = create_task(
             self.receiving()
@@ -137,17 +150,21 @@ class WebsocketPostman(BasePostman):
             return_when=asyncio.FIRST_EXCEPTION
         )
 
-        exceptions = [ task.exception() for task in done]
         try:
-            for e in exceptions:
-                raise e
+            for task in done:
+                if task.exception():
+                    raise task.exception()
+
+
+        except ConnectionClosedError:
+            console.print("[green] Postman Connection was closed. Trying Reconnect")
         except:
             console.print_exception()
 
 
         logger.debug(f"Postman: Lost connection inbetween everything :( {[ task.exception() for task in done]}")
         logger.error(f'Postman: Trying to reconnect Postman')
-        console.print()
+        
 
         if self.connection: await self.connection.close()
 

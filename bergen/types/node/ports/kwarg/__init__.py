@@ -1,3 +1,3 @@
-from .int import IntKwargPort
-from .model import ModelKwargPort
-from .string import StringKwargPort
+from .intport import IntKwargPort
+from .modelport import ModelKwargPort
+from .stringport import StringKwargPort

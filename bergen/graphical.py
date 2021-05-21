@@ -1,30 +1,35 @@
-
-
 try:
     from PyQt5 import QtWidgets
     has_qt = True
+    qt_error = False
         
 except ImportError as e:
-    has_qt = False
+    has_qt = e
     QtWidgets = None
+
+
+try:
+    from PyQt5.QtWebEngineWidgets import QWebEngineView
+    has_webview = True
+        
+except ImportError as e:
+    has_webview = False
 
 
 class GraphicalBackend:
 
 
-    def __init__(self, parent=None, run_before_when_no_app=None) -> None:
+    def __init__(self, parent=None) -> None:
         self.parent = parent
         self.spawned_app = None
-        self.run_before_when_no_app = run_before_when_no_app
-        
-        
+
 
     def __enter__(self):
         global has_qt
-        assert has_qt, "You cannot run with a Qt Backend if no QT Backend is installed. Please install PyQT5"
+        assert has_qt == True, f"You cannot run with a Qt Backend if no QT Backend is installed. Please install PyQT5 {str(has_qt)}"
+
         if QtWidgets.QApplication.instance() is None:
             # if it does not exist then a QApplication is created
-            if self.run_before_when_no_app: self.run_before_when_no_app()
             self.spawned_app = QtWidgets.QApplication([])
 
         return self
