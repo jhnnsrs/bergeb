@@ -2,12 +2,14 @@
 
 import asyncio
 from asyncio.tasks import Task
+from bergen.messages.postman.log import LogLevel
 from bergen.debugging import DebugLevel
 from bergen.handlers.base import Connector
 from bergen.messages import *
 from bergen.handlers import *
 from bergen.console import console
 from bergen.utils import *
+from bergen.legacy.utils import create_task
 
 
 class Actor:
@@ -34,21 +36,21 @@ class Actor:
     async def on_provide(self, provide: ProvideHandler):
         await self.log(f"Providing {provide}")
 
-    async def on_unprovide(self, message):
-        await self.log(f"Unproviding {message}")
+    async def on_unprovide(self, provide: ProvideHandler):
+        await self.log(f"Unproviding {provide}")
 
 
     async def _on_provide_message(self, message: BouncedProvideMessage):
         self.provide_handler = ProvideHandler(message, self.connector)
         try:
-            await self.provide_handler.log("Providing", level=DebugLevel.INFO)
+            await self.provide_handler.log("Providing ssss", level=LogLevel.INFO)
             self.template = await self.provide_handler.get_template()
             provision_context = await self.on_provide(self.provide_handler)
 
             if provision_context is not None:
                 self.provide_handler.set_context(provision_context)
 
-            await self.provide_handler.log("Provision Done", level=DebugLevel.INFO)   
+            await self.provide_handler.log("Provision Done", level=LogLevel.INFO)   
             self._provided = True
             await self.provide_handler.pass_done()
 
@@ -70,7 +72,7 @@ class Actor:
                     message = await self.queue.get()
 
                     if isinstance(message, BouncedForwardedAssignMessage):
-                        task = asyncio.create_task(self.on_assign(message))
+                        task = create_task(self.on_assign(message))
                         task.add_done_callback(self.check_if_assignation_cancelled)
                         self.assignments[message.meta.reference] = task
 
@@ -104,30 +106,38 @@ class Actor:
                                 await self.log(f"Cancellation of assignment failed. Task was already Done", level=DebugLevel.INFO)
                                 #TODO: Maybe send this to arkitekt as well?
                         else:
-                            raise Exception("Assignment never was at this pod. something went wrong")
-
+                            unassign_done = UnassignDoneMessage(data={
+                                    "assignation": message.data.assignation
+                                },
+                                    meta = {
+                                        "reference": message.meta.reference,
+                                        "extensions": message.meta.extensions
+                                    }
+                                )
+                            await self.connector.forward(unassign_done)
+                            await self.log(f"There was nether an assignment on this Worker... Sending Done", level=DebugLevel.INFO)
                     else:
                         raise Exception(f"Type not known {message}")
 
                     self.queue.task_done()
+                
+            except Exception as e:
+                console.print_exception()
 
+        except asyncio.CancelledError:
+            await self.on_unprovide(self.provide_handler)
+            await self.log("Actor was beeing cancelled")
+            raise
 
-            except asyncio.CancelledError:
-                await self.on_unprovide(None)
-                await self.log("Actor was beeing cancelled")
-                raise
-
-        except Exception as e:
-            console.print_exception()
 
     
     def check_if_assignation_cancelled(self, task: Task):
         if task.cancelled():
-            console.log(f"[yellow] Assignation {task.get_name()} Cancelled and is now Done")
+            console.log(f"[yellow] Assignation {task} Cancelled and is now Done")
         elif task.exception():
-            console.log(f"[red] Assignation {task.get_name()} Failed with {str(task.exception())}")
+            console.log(f"[red] Assignation {task} Failed with {str(task.exception())}")
         elif task.done():
-            console.log(f"[green] Assignation {task.get_name()} Succeeded and is now Done")
+            console.log(f"[green] Assignation {task} Succeeded and is now Done")
 
 
     async def on_assign(self, assign: BouncedForwardedAssignMessage):
@@ -143,10 +153,9 @@ class Actor:
             
             except Exception as e:
                 # As broad as possible to send further
+                await assign_handler.log("Captured an Exception on the Broadest Level of Assignment. Please make sure to capure this exception before.", level=LogLevel.WARN)
                 console.print_exception()
                 await assign_handler.pass_exception(e)
-                # Pass this further up
-                raise
 
         except asyncio.CancelledError as e:
             await assign_handler.log(f"Cancellation of Assignment suceeded", level=DebugLevel.INFO)
@@ -157,5 +166,5 @@ class Actor:
         await self.reserve()
         return self
 
-    async def __aexit__(self):
+    async def __aexit__(self, type, value, traceback):
         await self.unreserve()

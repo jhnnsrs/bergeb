@@ -7,7 +7,7 @@ import os
 import shelve
 from abc import ABC, abstractmethod
 import requests
-
+from oauthlib.oauth2 import RefreshTokenGrant
 
 logger = logging.getLogger(__name__)
 
@@ -26,8 +26,6 @@ class BaseAuthBackend(ABC):
         # Needs to be set for oauthlib
         os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "0" if config.secure else "1"
         if not config.secure: console.log("Using Insecure Oauth2 Protocol.. Please only for local and debug deployments")
-
-
         self.config = config
         self.base_url = f'{"https" if config.secure else "http"}://{config.host}:{config.port}/'
         self.check_url = self.base_url + check_endpoint
@@ -39,29 +37,12 @@ class BaseAuthBackend(ABC):
         self.force_new_token = force_new_token  
 
         self.scope = " ".join(self.scopes)
-        
-        
-        self._user = None
-        self._accesstoken = None
-        self._application = None
 
         # Lets check if we already have a local toke
         config_name = "token.db"
         run_path = os.path.abspath(os.getcwd())
         self.db_path = os.path.join(run_path, config_name)
-        
-
         self.token = None
-        self.needs_validation = False
-
-        if not self.force_new_token:
-            try:
-                with shelve.open(self.db_path) as cfg:
-                        self.token = cfg['token']
-                        self.needs_validation = True
-                        logger.debug("Found local config")
-            except KeyError:
-                logger.info("No configuration found")
 
         super().__init__()
 
@@ -70,41 +51,64 @@ class BaseAuthBackend(ABC):
     def fetchToken(self, loop=None) -> str:
         raise NotImplementedError("This is an abstract Class")
 
-    def refetchToken(self) -> str:
-        raise NotImplementedError("This is an abstract Class")
-
-    def getUser(self):
-        assert self.token is not None, "Need to authenticate before accessing the User"
-        if not self._user:
-            answer = requests.get(self.base_url + "me/", headers={"Authorization": f"Bearer {self.access_token}"})
-            self._user = User(**answer.json())
-        return self._user
-
     @property
-    def access_token(self) -> str:
-        if not self._accesstoken:
-            self.getToken()
-        
-        return self._accesstoken
-
-    @property
-    def user(self) -> User:
-        if not self._user:
-            self.getUser()
-
-        return self._user
-
-    @property
-    def application(self) -> Application:
-        if not self._application:
-            self.getToken()
-            
-        return self._application
+    def access_token(self) -> str:        
+        return self.token["access_token"]
 
 
-    def getToken(self, loop=None) -> str:
+    def refetch(self):
+        """Refetches the Tokens"""
+        assert self.token is not None, "Cannot refetch Token if already fetched"
+
+        if "refresh_token" in self.token:
+            result = requests.post(self.token_url, {"grant_type": "refresh_token", "refresh_token": self.token["refresh_token"], "client_id": self.client_id, "client_secret": self.client_secret})
+            self.token = result.json()
+            return
+
+        self.logout()
+        self.login()
+
+
+    def logout(self):
+        self.token = None
+        with shelve.open(self.db_path) as cfg:
+            cfg['token'] = None
+
+
+    def login(self, force_new=False):
+        try:
+            with shelve.open(self.db_path) as cfg:
+                self.token = cfg['token']
+        except KeyError:
+            pass
+
+        if not self.token or force_new or self.force_new_token:
+            try:
+                self.token = self.fetchToken()
+                with shelve.open(self.db_path) as cfg:
+                    cfg['token'] = self.token
+
+            except ConnectionResetError:
+                raise Exception(f"We couldn't connect to the Herre instance at {self.base_url}")     
+            except:
+                raise
+
+        # Checking connection
+        print("Reached here")
+        response = requests.get(self.check_url, headers={"Authorization": f"Bearer {self.token['access_token']}"})
+
+        if response.status_code != 200:
+            # Our Initial Token was wrong, lets try to get a new one
+            self.token = self.fetchToken()
+            response = requests.get(self.check_url, headers={"Authorization": f"Bearer {self.token['access_token']}"})
+
+        assert response.status_code == 200, "Was not able to get a valid token"
+
+
+    def getToken(self, loop=None, force=False) -> str:
         if self._accesstoken is None:
-            if self.token is None:
+            if force or self.token is None or self.force_new_token:
+
                 try:
                     self.token = self.fetchToken()
                 except ConnectionResetError:
@@ -113,10 +117,11 @@ class BaseAuthBackend(ABC):
                     logger.error(f"Couldn't fetch Token with config {self.config}")
                     raise
                 
+
                 with shelve.open(self.db_path) as cfg:
                     cfg['token'] = self.token
 
-
+            # Checking connection
             response = requests.get(self.check_url, headers={"Authorization": f"Bearer {self.token['access_token']}"})
 
             if response.status_code != 200:
@@ -125,7 +130,11 @@ class BaseAuthBackend(ABC):
 
 
             assert response.status_code == 200, "Was not able to get a valid token"
+
             self._application = Application(**json.loads(response.content))
-            self._accesstoken =  self.token["access_token"]
+
+            print(self.token)
+            self._accesstoken = self.token["access_token"]
+            self._refresh_token = self.token["refresh_token"] if "refresh_token" in self.token else None
 
         return self._accesstoken

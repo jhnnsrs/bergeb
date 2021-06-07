@@ -31,6 +31,7 @@ class Avatar(ArnheimObject):
 
 class User(ArnheimModel):
     id: Optional[int]
+    email: Optional[str]
     username: Optional[str]
     firstName: Optional[str]
     lastName: Optional[str]

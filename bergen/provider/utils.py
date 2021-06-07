@@ -19,7 +19,7 @@ def createNodeFromActor(actor,*args, **kwargs):
     #return createNodeFromFunction(actor.assign, *args, interface=actor.__name__.lower())
 
 def parseFunctionToDict(function: Callable, widgets: dict = {}, allow_empty_doc=False, interface=None):
-    is_generator = inspect.isasyncgenfunction(function) or inspect.isgenerator(function)
+    is_generator = inspect.isasyncgenfunction(function) or inspect.isgeneratorfunction(function)
     logger.info(f"Node is {'Generator' if is_generator else 'Function'}")
 
     sig = signature(function)

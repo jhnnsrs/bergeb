@@ -14,17 +14,11 @@ from functools import partial
 import json
 from bergen.console import console
 import asyncio
-try:
-    from asyncio import create_task
-except ImportError:
-    #python 3.6 fix
-    create_task = asyncio.ensure_future
-
 
 import websockets
 from bergen.schema import AssignationStatus, Node, ProvisionStatus, Template
 from bergen.models import Pod
-
+from bergen.legacy.utils import create_task
 
 
 logger = logging.getLogger(__name__)
@@ -52,15 +46,13 @@ class WebsocketPostman(BasePostman):
 
     def __init__(self, client, port= None, protocol = None, host= None, auth= None, **kwargs) -> None:
         super().__init__(client, **kwargs)
-        self.token = auth["token"]
-        self.port = port or client.config.port
-        self.protocol = protocol
-        self.host = host or client.config.host
+        self.websocket_host = client.config.host
+        self.websocket_port = client.config.port
+        self.websocket_protocol = "wss" if client.config.secure else "ws"
         self.connection = None      
         self.channel = None         
         self.callback_queue = ''
 
-        self.uri = f"ws://{self.host}:{self.port}/postman/?token={self.token}"
         self.progresses = {}
 
         # Retry logic
@@ -176,8 +168,16 @@ class WebsocketPostman(BasePostman):
 
 
     async def connect_websocket(self):
-        self.connection = await websockets.client.connect(self.uri)
-        logger.info("Successfully connected [bold]Postman")
+        try:
+            uri = f"{self.websocket_protocol}://{self.websocket_host}:{self.websocket_port}/postman/?token={self.client.auth.access_token}"
+            self.connection = await websockets.client.connect(uri)
+        except:
+            #TODO: Better TokenExpired Handling
+            self.client.auth.refetch()
+            uri = f"{self.websocket_protocol}://{self.websocket_host}:{self.websocket_port}/postman/?token={self.client.auth.access_token}"
+            self.connection = await websockets.client.connect(uri)
+
+        logger.info("Sueccess fully connected Provider ")
         
 
     async def receiving(self):
@@ -207,6 +207,7 @@ class WebsocketPostman(BasePostman):
 
 
     async def forward(self, message: MessageModel):
+        console.log(message)
         await self.send_queue.put(message)
         
 

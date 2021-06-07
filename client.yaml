@@ -1,0 +1,19 @@
+arkitekt:
+  host: localhost
+  port: 8090
+  secure: false
+herre:
+  host: localhost
+  port: 8000
+  secure: false
+  scopes:
+    - introspection
+    - read_starred
+    - can_provide
+    - can_assign
+    - can_forward_bounce
+  clientID: huKQboFgvLaqfVb23QAJ7Kchp9Rzl87vCVRgWHjZ
+  client_id: BttOemOqLNhpPyxcrBK3WHHU8ccMhjyzC9nN2NLZ
+  client_secret: RaCQaILLWDmL5jryPIHgwHkrfzcl8fe8ahZR1ncOZ5XCB2wcYHSbpEDEwOZPCGWIdLjgqM7gB3K0dSe1gPIFXUSzXJmifxQD1JPgvkx7P822ZxuPg2yLoEZ4EysHus1Y
+  authorization_grant_type: AUTHORIZATION_CODE
+  redirect_uri: http://localhost:3000

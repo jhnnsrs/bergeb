@@ -1,4 +1,3 @@
-from asyncio import exceptions
 from bergen.schema import DataModel, DataPoint, WardSettings
 from bergen.wards.default import GraphQLWard
 from bergen.auths.base import BaseAuthBackend
@@ -25,6 +24,10 @@ class WardRegistry(object):
                 # Default Builders for standard
                 DataPointType.GRAPHQL: GraphQLWard
         }
+
+    @property
+    def wards(self):
+        return [ward for distinct, ward in self.distinctWardMap.items()]
 
     def set_base(self, ward):
         self.identifierWardMap["node"] = ward

@@ -27,6 +27,8 @@ logger = logging.getLogger(__name__)
 import os
 
 
+class SafetyError(Exception):
+    pass
 
 
 class BaseBergen:
@@ -38,6 +40,7 @@ class BaseBergen:
             client_type: ClientType = ClientType.CLIENT,
             log_stream=False,
             auto_connect=False,
+            capture_exceptions=False,
             **kwargs) -> None:
         
         
@@ -50,18 +53,12 @@ class BaseBergen:
             set_current_client(self)
 
 
-
         self.auth = auth
-
-
-
-        self.application = self.auth.application
-
-
+        self.auth.login()
 
         self.config = config
         self.client_type = client_type
-
+        self.capture_exceptions=False
 
         self.registered_hooks = Hooks()
 
@@ -78,11 +75,15 @@ class BaseBergen:
         self._entertainer = None
         self.negotiate_additionals = {}
 
+        try:
+            self.loop = asyncio.get_event_loop()
+        except RuntimeError:
+            console.log("[yellow] Creating New EventLoop in This Thread")
+            self.loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(self.loop)
 
         if auto_connect:
             self.negotiate()
-
-
 
 
     @property
@@ -160,8 +161,6 @@ class BaseBergen:
         return provider
     
     async def negotiate_async(self):
-        self.loop = asyncio.get_event_loop()
-
         from bergen.schemas.arkitekt.mutations.negotiate import NEGOTIATION_GQL
 
         # Instantiate our Main Ward, this is only for Nodes and Pods
@@ -169,9 +168,8 @@ class BaseBergen:
         await self.main_ward.configure()
 
         # We resort escalating to the different client Type protocols
-        self._transcript = await NEGOTIATION_GQL.run_async(ward=self.main_ward, variables={"clientType": self.client_type, "internal": self.is_iternal, **self.negotiate_additionals})
-        print(self._transcript)
-
+        self._transcript = await NEGOTIATION_GQL.run(ward=self.main_ward, variables={"clientType": self.client_type, "internal": self.is_iternal, **self.negotiate_additionals})
+ 
         #Lets create our different Wards 
         
         assert self._transcript.models is not None, "We apparently didnt't get any points"
@@ -262,15 +260,12 @@ class BaseBergen:
         if self._provider: await self._provider.disconnect()
         if self._entertainer: await self._entertainer.disconnect()
 
-        wards = self.identifierWardMap.values()
-        for ward in wards:
-            await ward.disconnect()
-
+        ward_registry = get_ward_registry()
+        await asyncio.gather(*[ward.disconnect() for ward in ward_registry.wards])
+        print("Sucessfulyl disconnected")
 
     def negotiate(self):
-        self.loop = asyncio.get_event_loop()
         assert not self.loop.is_running(), "You cannot negotiate with an already running Event loop, please ue negotiate_async"
-
         self.loop.run_until_complete(self.negotiate_async())
 
 
@@ -314,8 +309,15 @@ class BaseBergen:
         return self
 
 
-    async def __aexit__(self,*args, **kwargs):
-        await self.disconnect_async()
+    async def __aexit__(self, type, value, traceback):
+        try:
+            if value and isinstance(value, asyncio.CancelledError): 
+                raise SafetyError("We caputered a Cancellation at the Bergen Context Level. Please make sure to capture it before in your code. See documentation!") from value#
+        
+
+        except Exception as e:    
+            await self.disconnect_async()
+            if not self.capture_exceptions: raise e
 
 
     def disconnect(self):

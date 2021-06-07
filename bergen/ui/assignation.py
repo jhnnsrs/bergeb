@@ -82,7 +82,6 @@ class AssignationUI(QDialog):
         else:
             self.keyValuesMap[updatedkey] = value
             dependent_keys = [key for key, dependencies in self.keyDependencyMap.items() if updatedkey in dependencies]
-            print(dependent_keys)
             
             for key in dependent_keys:
                 self.keyWidgetMap[key].render(self.keyValuesMap)

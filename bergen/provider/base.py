@@ -47,12 +47,10 @@ class BaseProvider(Hookable):
     helperClass = None
 
 
-    def __init__(self, client: BaseBergen, provider: int = None, loop=None, **kwargs) -> None:
+    def __init__(self, client: BaseBergen, loop=None, **kwargs) -> None:
         super().__init__(**kwargs)
-        assert provider is not None, "Provider was set to none, this is weird!!"
-        self.arkitekt_provider = provider
         self.client = client
-        self.loop = loop or client.loop or asyncio.get_event_loop()
+        self.loop = loop or client.loop
 
         self.template_actorClass_map = {}
 
@@ -84,6 +82,8 @@ class BaseProvider(Hookable):
             else:
                 is_coroutine = inspect.iscoroutinefunction(function_or_actor)
                 is_asyncgen = inspect.isasyncgenfunction(function_or_actor)
+
+                is_generatorfunction = inspect.isgeneratorfunction(function_or_actor)
                 is_function = inspect.isfunction(function_or_actor)
 
                 class_attributes = {"assign": staticmethod(function_or_actor), "expandInputs": not bypass_expand, "shrinkOutputs":  not bypass_shrink}
@@ -93,6 +93,10 @@ class BaseProvider(Hookable):
                     actorClass =  type(f"GeneratedActor{template.id}",(FunctionalFuncActor,), class_attributes)
                 elif is_asyncgen:
                     actorClass =  type(f"GeneratedActor{template.id}",(FunctionalGenActor,), class_attributes)
+                elif is_generatorfunction:
+                    actorClass = type(f"GeneratedActor{template.id}", (FunctionalThreadedGenActor,),class_attributes)
+
+                
                 elif is_function:
                     actorClass = type(f"GeneratedActor{template.id}",(FunctionalThreadedFuncActor,), class_attributes)
                 else:
@@ -173,7 +177,6 @@ class BaseProvider(Hookable):
 
 
     async def handle_bounced_unprovide(self, message: BouncedUnprovideMessage):
-        print(message)
         try:
             await self.on_bounced_unprovide(message)
 

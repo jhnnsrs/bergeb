@@ -13,10 +13,10 @@ except ImportError as e:
 
 
 try:
-    from bergen.wards.gql.main import MainWard as GQLMainWard
+    from bergen.wards.gql.main import GQLMainWard
     MainWard = GQLMainWard
 
 except ImportError as e:
     console.log("No installed GQL Transport. Using bare aiohttp")
-    from bergen.wards.bare.main  import MainWard as BareMainWard
+    from bergen.wards.bare.main import BareMainWard
     MainWard = BareMainWard

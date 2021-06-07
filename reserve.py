@@ -8,33 +8,55 @@ async def use(package=None, interface=None) -> Node:
     return await Node.asyncs.get(package=package, interface=interface)
 
 
-async def stream(node, *args, **kwargs):
-    with Monitor(title="testing"):
-        async with node.reserve(room="sted", auto_provide=True, auto_unprovide=False) as res:
-            async for value in res.stream(*args, **kwargs):
-                res.log("nana", str(value))
 
-            print("Done")
+async def stream(res, *args, **kwargs):
+        async for value in res.stream(*args, **kwargs):
+            print("nana", str(value))
+
+        print("Done")
 
 async def assign(node, *args, **kwargs):
-    with Monitor(title="testing"):
         async with node.reserve(room="sted", auto_provide=True, auto_unprovide=False) as res:
             return await res.assign(*args, **kwargs)
 
 
 
 
-async def main():
+async def app_assign():
 
-    async with Bergen(config_path="tests/configs/implicit.yaml", force_new_token=True):
+    async with Bergen(config_path="client.yaml", force_new_token=True):
 
-        zeries = await use(package="Flow Boy", interface="threaded_function")
+        adder = await use(package="Test Implicit", interface="adder")
 
-        result = await assign(zeries, 4, 5)
-        print(result)
-            
+        with Monitor(title="testing", log=True):
+            async with adder.reserve(auto_provide=True, auto_unprovide=False) as res:
+                result = await res.assign(4,3)
+                print(result)
 
 
+
+async def app_stream():
+
+    async with Bergen(config_path="client.yaml", log_stream=True, force_new_token=True):
+
+        yielder = await use(package="Test Implicit", interface="intyielder")
+        adder = await use(package="Test Implicit", interface="adder")
+
+
+        async def iterate():
+            async for result in yielder(interval=2):
+                print(result)
+
+        with Monitor(title="testing", log=True):
+            nana = asyncio.create_task(iterate())
+            await asyncio.sleep(5)
+
+            nana.cancel()
+            print("Cancelled Called")
+            await nana
+
+
+            print("Hallo")
 
 
             
@@ -43,5 +65,4 @@ async def main():
 if __name__ == "__main__":
 
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(main())
-    loop.close()
+    loop.run_until_complete(app_stream())

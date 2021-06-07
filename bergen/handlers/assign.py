@@ -32,11 +32,10 @@ class AssignHandler(ContractHandler[BouncedForwardedAssignMessage]):
         return_message = AssignCancelledMessage(data={"ok": True}, meta=self.meta)
         await self.forward(return_message)
 
-    async def pass_result(self, value):
+    async def pass_return(self, value):
         return_message = AssignReturnMessage(data={"returns": value}, meta=self.meta)
         await self.forward(return_message)
 
     async def pass_exception(self, exception):
-        console.print_exception()
         error_message = AssignCriticalMessage(data={"message": str(exception), "type": str(exception.__class__.__name__)}, meta=self.meta)
         await self.forward(error_message)

@@ -3,7 +3,7 @@ from ..diagram import Node
 from abc import ABC, abstractmethod
 import asyncio
 from bergen.console import console
-
+from bergen.legacy.utils import create_task
 
 class Atom(ABC):
 
@@ -30,7 +30,7 @@ class Atom(ABC):
         await self.action_queue.put(DoneOutEvent(node_id=self.node.id, handle=handle))
 
     async def start(self):
-        self.run_task = asyncio.create_task(self.run())
+        self.run_task = create_task(self.run())
 
     async def cancel(self):
         self.run_task.cancel()

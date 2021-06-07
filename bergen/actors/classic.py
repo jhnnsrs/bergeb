@@ -22,7 +22,7 @@ class ClassicFuncActor(ClassicActor):
         result = await self.assign(assign_handler, args, kwargs)
         try:
             shrinked_returns = await shrinkOutputs(self.template.node, result) if self.shrinkOutputs else result
-            await assign_handler.pass_result(shrinked_returns)
+            await assign_handler.pass_return(shrinked_returns)
         except Exception as e:
             await assign_handler.pass_exception(e)
 

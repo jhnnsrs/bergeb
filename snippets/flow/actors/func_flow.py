@@ -26,7 +26,6 @@ class FuncFlowActor(ClassicFuncActor):
 
     async def on_provide(self, provide: ProvideHandler):
         # graph = await Graph.asyncs.get(template=self.pod.template)
-        print(provide.template_id)
         self.graph = await Graph.asyncs.get(id=3)
         self.diagram = self.graph.diagram
         self.nodes =  [ node for node in self.diagram.elements if isinstance(node, diagram.Node)]

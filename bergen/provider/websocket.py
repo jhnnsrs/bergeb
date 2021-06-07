@@ -30,13 +30,11 @@ DEBUG = True
 class WebsocketProvider(BaseProvider):
     ''' Is a mixin for Our Bergen '''
 
-    def __init__(self, client: BaseBergen, host=None, port=None,  protocol=None, auth=None, auto_reconnect=True,**kwargs) -> None:
+    def __init__(self, client: BaseBergen, auto_reconnect=True, **kwargs) -> None:
         super().__init__(client, **kwargs)
-        self.websocket_host = host or client.config.host
-        self.websocket_port = port or client.config.port
-        self.websocket_protocol = protocol
-        self.token = auth["token"]
-
+        self.websocket_host = client.config.host
+        self.websocket_port = client.config.port
+        self.websocket_protocol = "wss" if client.config.secure else "ws"
         self.pending = None
 
         self.auto_reconnect = True
@@ -134,8 +132,15 @@ class WebsocketProvider(BaseProvider):
         
 
     async def connect_websocket(self):
-        uri = f"{self.websocket_protocol}://{self.websocket_host}:{self.websocket_port}/provider/?token={self.token}"
-        self.connection = await websockets.client.connect(uri)
+        try:
+            uri = f"{self.websocket_protocol}://{self.websocket_host}:{self.websocket_port}/provider/?token={self.client.auth.access_token}"
+            self.connection = await websockets.client.connect(uri)
+        except:
+            #TODO: Better TokenExpired Handling
+            self.client.auth.refetch()
+            uri = f"{self.websocket_protocol}://{self.websocket_host}:{self.websocket_port}/provider/?token={self.client.auth.access_token}"
+            self.connection = await websockets.client.connect(uri)
+
         logger.info("Sueccess fully connected Provider ")
 
 

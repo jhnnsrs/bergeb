@@ -1,18 +1,18 @@
 try:
-    from PyQt5 import QtWidgets
+    from qtpy import QtWidgets
     has_qt = True
     qt_error = False
         
-except ImportError as e:
+except Exception as e:
     has_qt = e
     QtWidgets = None
 
 
 try:
-    from PyQt5.QtWebEngineWidgets import QWebEngineView
+    from qtpy.QtWebEngineWidgets import QWebEngineView
     has_webview = True
         
-except ImportError as e:
+except Exception as e:
     has_webview = False
 
 

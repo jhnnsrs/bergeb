@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import asyncio
 from bergen.managers.base import BaseManager
 from typing import Any, Callable, Dict, Generic, List, Optional, TypeVar, Type
 from pydantic.fields import Field
@@ -25,11 +26,16 @@ class ArnheimModelManager(BaseManager, Generic[ModelType]):
         super().__init__()
 
     def _call_meta(self, attribute, **kwargs):
+        from bergen.registries.client import get_current_client
+        client = get_current_client()
         from bergen.types.utils import parse_kwargs
         method =  getattr(self.meta, attribute, None)
         assert method is not None, f"Please provide the {attribute} parameter in your ArnheimModel meta class "
-        typed_gql: TypedGQL = method(self.model)    
-        return typed_gql.run(variables=parse_kwargs(kwargs))
+        typed_gql: TypedGQL = method(self.model)
+        if client.loop.is_running():
+            return asyncio.run_coroutine_threadsafe(typed_gql.run(variables=parse_kwargs(kwargs)), client.loop).result()
+        else:
+            return client.loop.run_until_complete(typed_gql.run(variables=parse_kwargs(kwargs)))
 
     def __getattr__(self, name: str) -> ModelType:
         def function(**kwargs):
@@ -78,7 +84,7 @@ class ArnheimAsyncModelManager(BaseManager, Generic[ModelType]):
         method =  getattr(self.meta, attribute, None)
         assert method is not None, f"Please provide the {attribute} parameter in your ArnheimModel meta class "
         typed_gql: TypedGQL = method(self.model)    
-        return await typed_gql.run_async(ward=ward, variables=parse_kwargs(kwargs))
+        return await typed_gql.run(ward=ward, variables=parse_kwargs(kwargs))
 
 
     def __getattr__(self, name: str) -> ModelType:

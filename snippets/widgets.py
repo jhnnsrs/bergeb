@@ -33,4 +33,3 @@ if __name__ == "__main__":
     inputs = node.askInputs()
 
     x = node(inputs, with_progress=True)
-    print(x)

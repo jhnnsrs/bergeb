@@ -1,11 +1,12 @@
 import asyncio
+from bergen.legacy.utils import get_running_loop
 from typing import Any
 from bergen.contracts.reservation import Reservation
 from bergen.contracts.interaction import Interaction
 
 from bergen.monitor.monitor import Monitor
 from bergen.messages.postman.reserve.bounced_reserve import ReserveParams
-from bergen.schema import AssignationParams, Node
+from bergen.schema import AssignationParams, Node, NodeType
 from bergen.registries.client import get_current_client
 from bergen.contracts import Reservation
 from aiostream import stream
@@ -49,10 +50,10 @@ class NodeExtender(AssignationUIMixin):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args,**kwargs)
         
-        bergen = get_current_client()
+        client = get_current_client()
 
-        self._postman = bergen.getPostman()
-        self._loop = bergen.loop
+        self._postman = client.postman
+        self._loop = client.loop
 
 
     def interactive(self) -> Interaction:
@@ -61,8 +62,7 @@ class NodeExtender(AssignationUIMixin):
     def reserve(self, loop=None, monitor: Monitor = None, ignore_node_exceptions=False, bounced=None, **params) -> Reservation:
         return Reservation(self, loop=loop, monitor=monitor, ignore_node_exceptions=ignore_node_exceptions, bounced=bounced, **params)
 
-    async def stream(self, inputs: dict, params: ReserveParams = None, **kwargs):
-        return stream.iterate(self._postman.stream(self, inputs, params, **kwargs))
+   
 
     def _repr_html_(self: Node):
         string = f"{self.name}</br>"
@@ -79,8 +79,29 @@ class NodeExtender(AssignationUIMixin):
         return string
 
 
-    def __call__(self, *args: Any, **kwds: Any) -> Any:
-        return super().__call__(*args, **kwds)
+    async def assign(self, *args, reserve_params: dict = {}, **kwargs):
+        async with self.reserve(**reserve_params) as res:
+            return await res.assign(*args, **kwargs)
+
+    async def stream(self, *args, reserve_params: dict = {}, **kwargs):
+        async with self.reserve(**reserve_params) as res:
+            async for result in res.stream(*args, **kwargs):
+                yield result
+
+        
+
+
+    def __call__(self, *args: Any,  reserve_params: ReserveParams = None, **kwargs) -> Any:
+        try:
+            loop = get_running_loop()
+        except RuntimeError:
+            assert self.type == NodeType.FUNCTION, "Can only call node functions syncronoicouly"
+            self._loop.run_until_complete()
+        else:
+            if self.type == NodeType.GENERATOR:
+                return self.stream(*args, **kwargs)
+            if self.type == NodeType.FUNCTION:
+                return self.assign(*args, **kwargs)
 
 
     def __rich__(self):
@@ -89,5 +110,6 @@ class NodeExtender(AssignationUIMixin):
         my_table.add_row("ID", str(self.id))
         my_table.add_row("Package", self.package)
         my_table.add_row("Interface", self.interface)
+        my_table.add_row("Type", self.type)
 
         return my_table

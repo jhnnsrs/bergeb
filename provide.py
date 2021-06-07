@@ -1,4 +1,12 @@
-from bergen.actors.utils import log
+from bergen.contracts import reservation
+from bergen.messages.postman.reserve.reserve_transition import ReserveState
+from bergen.messages.postman.provide.provide_transition import ProvideState
+from bergen.console import console
+from bergen.handlers.provide import ProvideHandler
+from bergen.comfort import use
+from bergen.handlers.assign import AssignHandler
+from bergen.actors.classic import ClassicFuncActor
+from bergen.actors.utils import log, useApp, useUser
 from bergen.clients.provider import ProviderBergen
 from bergen.provider.base import OneExlusivePodPolicy
 import asyncio
@@ -9,7 +17,7 @@ import time
 logger = logging.getLogger(__name__)
 
 client = ProviderBergen(
-        config_path = "bergen.yaml",
+        config_path = "implicit.yaml",
         log_stream = True,
         force_new_token=True,
         auto_reconnect=True #if we want to specifically only use pods on this innstance we would use that it in the selector
@@ -19,7 +27,7 @@ client.negotiate()
 
 
 @client.provider.enable(gpu=True, policy=OneExlusivePodPolicy())
-async def adder(x: int, y: int, z: int = 7) -> int:
+def adder(x: int, y: int, z: int = 7) -> int:
         """Adder
 
         Adds x + y
@@ -31,13 +39,26 @@ async def adder(x: int, y: int, z: int = 7) -> int:
         Returns:
             int: X + Y
         """
-
+        print(useUser())
+        print(useApp())
         return x + y
 
 
+async def printer(x: int):
+        """Printer
 
-    
-@client.provider.enable(gpu=True, policy=OneExlusivePodPolicy())
+        Prints X
+
+        Args:
+            x (int): Input X
+        """
+        print(x)
+
+
+
+
+
+@client.provider.enable(gpu=True, policy=OneExlusivePodPolicy())    
 async def constantadder(x: int, z: int = 7) -> int:
         """Constant Adder
 
@@ -53,7 +74,6 @@ async def constantadder(x: int, z: int = 7) -> int:
         return x + z
 
 
-@client.provider.enable(gpu=True, policy=OneExlusivePodPolicy())
 async def randomint(start: int = 0, end: int = 100) -> int:
     """Random Integer
 
@@ -68,13 +88,15 @@ async def randomint(start: int = 0, end: int = 100) -> int:
     """
     await log(f"Sleeping Super Fast")
     await asyncio.sleep(1)
+    node = await use(package="Elements", interface="show")
+    print(node)
 
     return random.randint(0, 100)
 
 
 
 @client.provider.enable(gpu=True, policy=OneExlusivePodPolicy())
-async def intyielder(interval: int= 1, iterations: int = 6) -> int:
+def intyielder(interval: int= 1, iterations: int = 6) -> int:
     """Int Yielder
 
     Yields an increasing integer every {interval} seconds for {iterations} Iterations
@@ -88,33 +110,15 @@ async def intyielder(interval: int= 1, iterations: int = 6) -> int:
     """
         
     for i in range(0,iterations):
-
-        await log(f"Sleeping {interval}")
-        await asyncio.sleep(interval)
-        await log(f"Yielding {i}")
+        print(f"Sleeping {interval}")
+        time.sleep(interval)
+        log(f"Yielding {i}")
         yield i
 
 
 @client.provider.enable(gpu=True, policy=OneExlusivePodPolicy())
-async def camille_cool_function(x: int, y: int, cool: int = 5) -> int:
-    """Cammiles Cool FUnction
-
-    Camilles function takes somthing aoinsoinsoinse
-
-    Args:
-        x (int): sdf
-        y (int): sdfsdf
-        cool (int, optional): sdfsdf. Defaults to "Hallo".
-
-    Returns:
-        int: sdfsdf
-    """
-
-    return x + y
-
-@client.provider.enable(gpu=True, policy=OneExlusivePodPolicy())
-def threaded_function(x: int, y: int, cool: int = 5) -> int:
-    """Threaded funciton
+def threaded_generatorddd(cool: int = 5) -> int:
+    """Threaded Generator DD
 
     Camilles function takes somthing aoinsoinsoinse
 
@@ -128,12 +132,12 @@ def threaded_function(x: int, y: int, cool: int = 5) -> int:
     """
     log("nananana")
     print("Done")
-    time.sleep(4)
-    print("Run")
+    for i in range(3):
+        time.sleep(1)
+        print("Yield")
 
-    return x + y
+        yield cool
 
-@client.provider.enable(gpu=True, policy=OneExlusivePodPolicy())
 async def call_me(cool: int = 5) -> int:
     """Call me
 
@@ -153,7 +157,7 @@ async def call_me(cool: int = 5) -> int:
     return cool
 
 
-@client.provider.enable(gpu=True, policy=OneExlusivePodPolicy())
+#@client.provider.enable(gpu=True, policy=OneExlusivePodPolicy())
 def call_me_threaded(cool: int = 5) -> int:
     """Call me threaded
 
@@ -167,35 +171,88 @@ def call_me_threaded(cool: int = 5) -> int:
     """
     log("nananana")
     print("Done")
-    time.sleep(4)
     print("Run")
 
     return cool
 
 
-@client.provider.enable(gpu=True, policy=OneExlusivePodPolicy())
-def maxisp_projectio(cool: int = 5) -> int:
-    """Maximum Intensity Projection
+class TestProvider(ClassicFuncActor):
 
-    Makes a meaximun intensity projection
-
-    Args:
-        cool (int, optional): sdfsdf. Defaults to 5.
-
-    Returns:
-        int: sdfsdf
-    """
-    log("nananana")
-    print("Done")
-    time.sleep(3)
-    print("Run")
-
-    return cool
+    async def change_state(self, seconds: int):
+        try:
+            while True:
+                await asyncio.sleep(seconds)
+                print("Changing State to INactive")
+                await self.provide_handler.set_state(ProvideState.INACTIVE)
+                await asyncio.sleep(seconds)
+                print("Changing State to Active")
+                await self.provide_handler.set_state(ProvideState.ACTIVE)
+        except:
+            console.print_exception()
 
 
+    async def on_provide(self, provide: ProvideHandler):
+        await provide.log("Providing Nodes")
+
+
+    async def assign(self, assign_handler: AssignHandler, args, kwargs):
+        """[summary]
+
+        Args:
+            assign_handler (AssignHandler): [description]
+            args ([type]): [description]
+            kwargs ([type]): [description]
+
+        Returns:
+            [type]: [description]
+        """
+        return args
 
 
 
+class TestProvider(ClassicFuncActor):
+
+    async def handle_reservation_change(self, res, status: str):
+        self.current_state[res] = status
+        errors = [ res.node for res, status in self.current_state.items() if status in [ReserveState.ERROR, ReserveState.CANCELLED]]
+        if len(errors) > 0:
+            print("We are now Unactive")
+            await self.provide_handler.set_state(ProvideState.INACTIVE)
+        else:
+            print("We are now Active")
+            await self.provide_handler.set_state(ProvideState.ACTIVE)
+
+    async def on_provide(self, provide: ProvideHandler):
+        await provide.log("Providing Nodes")
+
+        self.current_state = {}
+        print("Using", provide.reference)
+
+        node = await use(package="Elements", interface="show")
+        res = await node.reserve(provision=provide.reference).start(state_hook=self.handle_reservation_change)
+        await provide.log(res)
+
+        return {"task": res}
+
+
+    async def assign(self, assign_handler: AssignHandler, args, kwargs):
+        """[summary]
+
+        Args:
+            assign_handler (AssignHandler): [description]
+            args ([type]): [description]
+            kwargs ([type]): [description]
+
+        Returns:
+            [type]: [description]
+        """
+        return arg
+
+    async def on_unprovide(self, handler: ProvideHandler):
+        nana = handler.active_context
+        await handler.log(f"Shutting Down {nana}")
+        await asyncio.gather(*[res.end() for item, res in nana.items()])
+        await handler.log("Shut down")
 
 
 

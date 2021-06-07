@@ -50,6 +50,8 @@ class GQL(object):
         return self.m.group("type")
 
     def extract(self, result: dict):
+        assert self.firstchild in result, f"Cannot Access {self.firstchild}: in {result}"
+        assert result[self.firstchild] is not None, f"Empty response {result}"
         return result[self.firstchild]
 
 
@@ -84,21 +86,10 @@ class TypedGQL(GQL, Generic[MyType]):
     def cls(self) -> MyType:
         return self._cls
 
-    async def run_async(self, ward=None, variables=None, **kwargs) -> MyType:
+    async def run(self, ward=None, variables=None, **kwargs) -> MyType:
         ward = ward or self._cls.get_ward()
-        returnedobject = await ward.run_async(self, variables=variables,**kwargs)
-        assert returnedobject is not None, "We received nothing back from the Server! Refine your Query!"
-        if isinstance(returnedobject,list): return ListQuery([self.cls(**item) for item in returnedobject])
-        try:
-            return self.cls(**returnedobject)
-        except Exception as e:
-            logger.error(returnedobject)
-            raise e
-
-    def run(self, ward=None, variables=None, **kwargs) -> MyType:
-        ward = ward or self._cls.get_ward()
-        returnedobject = ward.run(self, variables=variables, **kwargs)
-        assert returnedobject is not None, "We received nothing back from the Server! Refine your Query!"
+        returnedobject = await ward.run(self, variables=variables, **kwargs)
+        assert returnedobject is not None, f"We received nothing back from the Server! Refine your Query! Query: {self.query} Variables: {variables}"
         if isinstance(returnedobject,list): return ListQuery([self.cls(**item) for item in returnedobject])
         return self.cls(**returnedobject)
 

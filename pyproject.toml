@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "bergen"
-version = "0.4.4"
+version = "0.4.69"
 readme = "README.md"
 homepage = "https://github.com/jhnnsrs/bergen"
 description = "A python client for the Arnheim Framework"
@@ -9,12 +9,13 @@ authors = ["jhnnsrs <jhnnsrs@gmail.com>"]
 license = "CC BY-NC 3.0"
 
 [tool.poetry.dependencies]
-python = "^3.6.1"
+python = ">=3.6.1,<3.10"
 requests = "^2.25.1"
 requests-oauthlib = "^1.3.0"
 websockets = "^8.1"
 pydantic = "^1.7.3"
 aiostream = "^0.4.1"
+contextvars = { version = "^2.2", python = "~3.6 || ~3.7" }
 gql = {extras = ["all"], version = "^3.0.0a5", allow-prereleases = true, optional=true}
 namegenerator = "^1.0.6"
 nest-asyncio = "^1.5.1"
@@ -23,11 +24,16 @@ tqdm = "^4.56.1"
 rich = "^10.1.0"
 PyQt5 = { version = "^5.15.4", optional=true}
 PyQtWebEngine = { version ="^5.15.4", optional=true}
+aiohttp = "^3.7.4"
+PyYAML = "^5.4.1"
+janus = "^0.6.1"
+PySide2 = { version = "^5.15.2", optional=true}
 
 
 [tool.poetry.extras]
 gql = ["gql"]
-graphical = ["PyQt5","PyQtWebEngine"]
+pyqt = ["PyQt5","PyQtWebEngine"]
+pyside = ["PySide2","PyQtWebEngine"]
 
 [tool.poetry.dev-dependencies]
 pytest-aiohttp = "^0.3.0"

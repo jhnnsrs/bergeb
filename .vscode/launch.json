@@ -26,6 +26,13 @@
             "request": "launch",
             "program": "reserve.py",
             "console": "integratedTerminal"
+        },
+        {
+            "name": "Python: Provide",
+            "type": "python",
+            "request": "launch",
+            "program": "provide.py",
+            "console": "integratedTerminal"
         }
     ]
 }

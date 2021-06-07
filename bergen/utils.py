@@ -30,11 +30,14 @@ async def expandInputs(node: Node, args: list, kwargs: dict) -> dict:
 
     expanded_kwargs = {}
     for port in node.kwargs:
-        if port.key not in kwargs:
+        if port.key not in kwargs or kwargs[port.key] is None:
             if port.required:
                 raise ExpansionError(f"We couldn't expand {port.key} because it wasn't provided by our Kwargs, wrong assignation!!!")
             else:
                 break
+
+        
+
 
         if port.TYPENAME == PortTypes.MODEL_KWARG_PORT:
             modelClass = get_current_matcher().getModelForIdentifier(identifier=port.identifier)
@@ -49,6 +52,28 @@ async def expandInputs(node: Node, args: list, kwargs: dict) -> dict:
 
 
 async def shrinkOutputs(node: Node, returns: list) -> list:
+
+    #assert node.inputs is not None, "Your Query for Nodes seems to not provide any field for inputs, please use that in your get statement"
+    #assert len(node.inputs) > 0  is not None, "Your Node seems to not provide any inputs, calling is redundant"
+
+    shrank_returns = []
+    if not isinstance(returns, tuple) or isinstance(returns, list):
+        returns = [returns]
+
+    assert len(node.returns) == len(returns), "Returns do not conform to Node definition"
+    for port, item in zip(node.returns, returns):
+        if port.TYPENAME == PortTypes.MODEL_RETURN_PORT:
+            if isinstance(item, ArnheimModel):
+                shrank_returns.append(item.id)
+            else:
+                shrank_returns.append(item)
+        else:
+            shrank_returns.append(item)
+
+    return shrank_returns
+
+
+def shrinkOutputsSync(node: Node, returns: list) -> list:
 
     #assert node.inputs is not None, "Your Query for Nodes seems to not provide any field for inputs, please use that in your get statement"
     #assert len(node.inputs) > 0  is not None, "Your Node seems to not provide any inputs, calling is redundant"

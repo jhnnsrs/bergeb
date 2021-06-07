@@ -13,6 +13,7 @@ from bergen.models import Pod
 from bergen.actors.base import Actor
 from functools import partial
 from bergen.console import console
+from bergen.legacy.utils import create_task
 
 
 
@@ -86,51 +87,34 @@ class BaseEntertainer(Hookable):
             logger.info("Arkitekt acknowledged the creation of a Pod for our Actor [this has no consequences??]")
             self.provide_futures[message.meta.reference].set_result(message.data.pod)
 
-        if isinstance(message, UnprovideDoneMessage): 
+        elif isinstance(message, UnprovideDoneMessage): 
             # As we send the Activate Provide request to the Platform we will get a Return Statement
             logger.info("Arkitekt acknowledged the deletion of the Pod our our former Actor")
             self.unprovide_futures[message.meta.reference].set_result(message.data)
 
-        if isinstance(message, BouncedUnprovideMessage): 
-            #  We are responsible To Shut ourselfves down when Arkitekt Tells us t
-            assert message.data.provision is not None, "Received Cancellation with no reference to kill" 
-            self.unentertain(message, from_arkitekt=True)
 
-        if isinstance(message, BouncedProvideMessage): 
-            #  We are responsible To Shut ourselfves down when Arkitekt Tells us t
-            assert message.data.template is not None, "Received Cancellation with no reference to kill" 
-            logger.info("Arkitekt demands a New Actor for us")
-            self.entertain(message, from_arkitekt=True)
-
-        if isinstance(message, BouncedForwardedReserveMessage):
-            logger.info("Arkitekt demands a New Reservation from us")
-            assert message.data.provision is not None, "Received Forwared Reservation that had no Provision???"
-            assert message.data.provision in self.provision_actor_queue_map, f"Provision not entertained {message.data.provision} {self.provision_actor_queue_map}"
-            await self.provision_actor_queue_map[message.data.provision].put(message)
-            self.all_pod_reservations[message.meta.reference] = message.data.provision # Run in parallel
-
-        if isinstance(message, BouncedUnreserveMessage):
-            if message.data.reservation in self.all_pod_reservations: 
-                logger.info("Cancellation for Reservatoion received. Canceling!")
-                hosting_provising = self.all_pod_reservations[message.data.reservation]
-                await self.provision_actor_queue_map[hosting_provising].put(message)
-            else:
-                logger.error("Received Cancellation for task that was not in our tasks..")
-
-
-        if isinstance(message, BouncedForwardedAssignMessage):
+        elif isinstance(message, BouncedForwardedAssignMessage):
             assert message.data.provision is not None, "Received assignation that had no Provision???"
             assert message.data.provision in self.provision_actor_queue_map, f"Provision not entertained {message.data.provision} {self.provision_actor_queue_map}"
             await self.provision_actor_queue_map[message.data.provision].put(message)
             self.all_pod_assignments[message.meta.reference] = message.data.provision # Run in parallel
 
-        if isinstance(message, BouncedUnassignMessage):
+        elif isinstance(message, BouncedUnassignMessage):
             if message.data.assignation in self.all_pod_assignments: 
                 logger.info("Cancellation for task received. Canceling!")
                 hosting_provising = self.all_pod_assignments[message.data.assignation]
                 await self.provision_actor_queue_map[hosting_provising].put(message)
             else:
-                logger.error("Received Cancellation for task that was not in our tasks..")
+                logger.error("Received Cancellation for Assignation that is not running with us. Sending Done back..")
+                unassign_done = UnassignDoneMessage(data={
+                    "assignation": message.data.assignation
+                }, meta={"extensions": message.meta.extensions, "reference": message.meta.reference})
+                await self.forward(unassign_done)
+
+        else:
+            logger.error(f"This Message shouldn't apear in the entertainer {message}")
+
+                
 
 
     async def deactivateProvision(self, bounced_unprovide: BouncedUnprovideMessage):
@@ -204,7 +188,7 @@ class BaseEntertainer(Hookable):
         try:
             self.provision_actor_map[provision_reference] = actor
             self.provision_actor_queue_map[provision_reference] = actor.queue
-            run_task = asyncio.create_task(actor.run(bounced_provide))
+            run_task = create_task(actor.run(bounced_provide))
             run_task.add_done_callback(partial(self.actor_cancelled, actor))
             self.provision_actor_run_map[provision_reference] = run_task
 

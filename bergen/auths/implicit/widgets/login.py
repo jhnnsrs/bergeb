@@ -1,7 +1,7 @@
 
-from PyQt5 import QtCore
-from PyQt5.QtWidgets import QDialog, QVBoxLayout
-from PyQt5.QtWebEngineWidgets import QWebEngineView
+from qtpy import QtCore
+from qtpy.QtWidgets import QDialog, QVBoxLayout
+from qtpy.QtWebEngineWidgets import QWebEngineView
 from bergen.console import console
 
 class LoginWindow(QWebEngineView):

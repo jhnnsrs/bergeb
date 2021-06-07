@@ -10,7 +10,7 @@ current_monitor: ContextVar["Monitor"] = ContextVar('current_monitor', default=N
 
 class Monitor:
 
-    def __init__(self, title="Monitor", progress=False) -> None:
+    def __init__(self, title="Monitor", log=False) -> None:
         """Monitor allows you to monitor the progress of what is happenening inside your application
 
 
@@ -20,7 +20,7 @@ class Monitor:
         """
         self.columns = Table.grid(expand=True)
         self.columns.add_column()
-        self.progress = progress
+        self.log = log
         self.panel = Panel(self.columns, title=title)
         self.live = Live(self.panel, refresh_per_second=4, console=console)
 

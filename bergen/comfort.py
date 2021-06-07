@@ -1,6 +1,5 @@
 from bergen.models import Node
-
-
+import asyncio
 
 
 
@@ -16,5 +15,9 @@ def use(package=None, interface=None) -> Node:
         Node: The Node
         
     """
-    return Node.objects.get(package=package, interface=interface)
+    loop = asyncio.get_event_loop()
+    if loop.is_running():
+        return Node.asyncs.get(package=package, interface=interface)
+    else:
+        return Node.objects.get(package=package, interface=interface)
 
