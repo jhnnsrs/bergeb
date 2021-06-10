@@ -59,7 +59,6 @@ async def app_stream():
             print("Hallo")
 
 
-            
 
 
 if __name__ == "__main__":
